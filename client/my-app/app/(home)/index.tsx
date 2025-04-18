@@ -3,6 +3,7 @@ import { Link, useRouter } from 'expo-router'
 import { Text, View, StyleSheet, Image, TouchableOpacity, ScrollView } from 'react-native'
 import { SignOutButton } from '../../components/SignOutButton'
 import { Ionicons } from '@expo/vector-icons'
+import DbTestQuery from '../../components/DbTestQuery'
 
 export default function HomePage() {
   const { user } = useUser()
@@ -47,6 +48,7 @@ export default function HomePage() {
 
         {/* Feed Section */}
         <View style={styles.feedContainer}>
+          <DbTestQuery />
           <Text style={styles.sectionTitle}>Feed</Text>
           {/* Add feed items here */}
           <View style={styles.emptyFeed}>
