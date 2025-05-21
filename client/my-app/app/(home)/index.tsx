@@ -1,69 +1,178 @@
 import { useUser } from '@clerk/clerk-expo'
 import { useRouter } from 'expo-router'
-import { Text, View, StyleSheet, Image, TouchableOpacity, ScrollView } from 'react-native'
+import { Text, View, StyleSheet, Image, TouchableOpacity, FlatList, SafeAreaView, RefreshControl, Alert } from 'react-native'
 import { SignOutButton } from '../../components/SignOutButton'
 import { Ionicons } from '@expo/vector-icons'
 import DbTestQuery from '../../components/DbTestQuery'
+import { useState, useEffect, useCallback, useRef } from 'react'
+
+// Tipul datelor pentru un post în feed
+interface FeedItem {
+  id: string;
+  type: 'story' | 'post' | 'dbdata';
+  content?: React.ReactNode;
+}
 
 export default function HomePage() {
-  const { user } = useUser()
+  const { user, isLoaded, isSignedIn } = useUser()
   const router = useRouter()
+  const [feedItems, setFeedItems] = useState<FeedItem[]>([])
+  const [refreshing, setRefreshing] = useState(false)
+  const dbQueryRefs = useRef<{[key: string]: any}>({})
+
+  useEffect(() => {
+    // Populăm feed-ul cu toate tipurile de conținut
+    setFeedItems([
+      { id: 'stories', type: 'story' },
+      { id: 'post-empty', type: 'post' },
+      { id: 'db-data', type: 'dbdata' }
+    ])
+  }, [])
+
+  // Funcția care se declanșează când un DbTestQuery a terminat de reîncărcat datele
+  const handleDbQueryRefreshed = useCallback(() => {
+    console.log('Datele din DbTestQuery au fost reîmprospătate')
+  }, [])
+
+  // Funcție pentru a reîncărca toate datele din aplicație, inclusiv datele utilizatorului
+  const onRefresh = useCallback(async () => {
+    console.log('Începe reîmprospătarea tuturor datelor...')
+    setRefreshing(true)
+    
+    // 1. Reîncărcăm datele utilizatorului de la Clerk pentru a actualiza poza de profil
+    if (isSignedIn && user) {
+      try {
+        await user.reload();
+        console.log('Datele utilizatorului au fost reîmprospătate');
+      } catch (error) {
+        console.error('Eroare la reîmprospătarea datelor utilizatorului:', error);
+      }
+    }
+    
+    // 2. Generăm noi ID-uri pentru toate elementele din feed pentru a forța re-renderarea
+    const newFeedItems: FeedItem[] = [
+      { id: 'stories-' + new Date().getTime(), type: 'story' },
+      { id: 'post-empty-' + new Date().getTime(), type: 'post' },
+      { id: 'db-data-' + new Date().getTime(), type: 'dbdata' }
+    ]
+    
+    setFeedItems(newFeedItems)
+    
+    // 3. Simulăm sfârșitul reîmprospatării după o scurtă întârziere
+    setTimeout(() => {
+      setRefreshing(false);
+      console.log('Reîmprospătare completă');
+    }, 1000);
+  }, [isSignedIn, user])
+
+  // Funcție pentru a renderiza diferite tipuri de conținut în feed
+  const renderFeedItem = ({ item }: { item: FeedItem }) => {
+    switch (item.type) {
+      case 'story':
+        return (
+          <View style={styles.storiesContainer}>
+            <FlatList
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              data={[{ id: 'add-story' }]}
+              keyExtractor={(item) => item.id}
+              renderItem={() => (
+                <TouchableOpacity style={styles.storyItem}>
+                  <View style={styles.addStoryButton}>
+                    <Ionicons name="add" size={24} color="#fff" />
+                  </View>
+                  <Text style={styles.storyText}>Adaugă</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        )
+      
+      case 'post':
+        return (
+          <View style={styles.feedContainer}>
+            <Text style={styles.sectionTitle}>Feed</Text>
+            <View style={styles.emptyFeed}>
+              <Ionicons name="newspaper-outline" size={50} color="#ddd" />
+              <Text style={styles.emptyFeedText}>Nu există postări încă</Text>
+              <TouchableOpacity 
+                style={styles.createPostButton}
+                onPress={() => {
+                  console.log('Pagina de explore trebuie configurată');
+                  Alert.alert('Informație', 'Această pagină nu este încă configurată.');
+                }}
+              >
+                <Text style={styles.createPostText}>Creează prima postare</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )
+      
+      case 'dbdata':
+        return (
+          <View style={styles.dbDataContainer}>
+            <Text style={styles.dbDataTitle}>Postari acasa</Text>
+            <DbTestQuery 
+              key={item.id} // Important pentru a forța re-renderarea
+              onRefreshTriggered={handleDbQueryRefreshed}
+            />
+          </View>
+        )
+      
+      default:
+        return null
+    }
+  }
+
+  // Header pentru feed
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <View style={styles.profileSection}>
+        <Image 
+          source={{ uri: user?.imageUrl }} 
+          style={styles.profileImage}
+          // Adăugăm un cache buster pentru a forța reîncărcarea imaginii
+          key={`profile-image-${refreshing ? 'refreshing' : 'idle'}`}
+        />
+        <View style={styles.welcomeText}>
+          <Text style={styles.greeting}>Bună,</Text>
+          <Text style={styles.username}>{user?.username || 'Utilizator'}</Text>
+          <SignOutButton />
+        </View>
+      </View>
+      <TouchableOpacity 
+        style={styles.settingsButton}
+        onPress={() => {
+          console.log('Pagina de explore trebuie configurată');
+          Alert.alert('Informație', 'Această pagină nu este încă configurată.');
+        }}
+      >
+        <Ionicons name="settings-outline" size={24} color="#333" />
+      </TouchableOpacity>
+    </View>
+  )
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.profileSection}>
-          <Image 
-            source={{ uri: user?.imageUrl }} 
-            style={styles.profileImage}
+    <SafeAreaView style={styles.container}>
+      {/* Main Feed with Continuous Scroll and Pull to Refresh */}
+      <FlatList
+        data={feedItems}
+        keyExtractor={(item) => item.id}
+        renderItem={renderFeedItem}
+        ListHeaderComponent={renderHeader}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.feedList}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#007AFF']} // Culoarea spinner-ului pe Android
+            tintColor={'#007AFF'} // Culoarea spinner-ului pe iOS
+            title={'Se reîncarcă...'} // Text afișat pe iOS sub spinner
+            titleColor={'#666'} // Culoarea textului pe iOS
           />
-          <View style={styles.welcomeText}>
-            <Text style={styles.greeting}>Bună,</Text>
-            <Text style={styles.username}>{user?.username || 'Utilizator'}</Text>
-            <SignOutButton />
-          </View>
-        </View>
-        <TouchableOpacity 
-          style={styles.settingsButton}
-          onPress={() => router.push('/(tabs)/explore')}
-        >
-          <Ionicons name="settings-outline" size={24} color="#333" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Main Content */}
-      <ScrollView style={styles.content}>
-        {/* Stories Section */}
-        <View style={styles.storiesContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <TouchableOpacity style={styles.storyItem}>
-              <View style={styles.addStoryButton}>
-                <Ionicons name="add" size={24} color="#fff" />
-              </View>
-              <Text style={styles.storyText}>Adaugă</Text>
-            </TouchableOpacity>
-            {/* Add more story items here */}
-          </ScrollView>
-        </View>
-
-        {/* Feed Section */}
-        <View style={styles.feedContainer}>
-          <DbTestQuery />
-          <Text style={styles.sectionTitle}>Feed</Text>
-          {/* Add feed items here */}
-          <View style={styles.emptyFeed}>
-            <Ionicons name="newspaper-outline" size={50} color="#ddd" />
-            <Text style={styles.emptyFeedText}>Nu există postări încă</Text>
-            <TouchableOpacity 
-              style={styles.createPostButton}
-              onPress={() => router.push('/(tabs)/explore')}
-            >
-              <Text style={styles.createPostText}>Creează prima postare</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
+        }
+      />
 
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
@@ -73,34 +182,43 @@ export default function HomePage() {
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.navItem}
-          onPress={() => router.push('/(tabs)/explore')}
+          onPress={() => {
+            console.log('Pagina de explore trebuie configurată');
+            Alert.alert('Informație', 'Această pagină nu este încă configurată.');
+          }}
         >
           <Ionicons name="compass-outline" size={24} color="#666" />
           <Text style={styles.navText}>Explorează</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.navItem}
-          onPress={() => router.push('/(tabs)/explore')}
+          onPress={() => router.push('/(home)/create-post')}
         >
           <Ionicons name="add-circle-outline" size={24} color="#666" />
           <Text style={styles.navText}>Postează</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.navItem}
-          onPress={() => router.push('/(tabs)/explore')}
+          onPress={() => {
+            console.log('Pagina de notificări trebuie configurată');
+            Alert.alert('Informație', 'Această pagină nu este încă configurată.');
+          }}
         >
           <Ionicons name="notifications-outline" size={24} color="#666" />
           <Text style={styles.navText}>Notificări</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.navItem}
-          onPress={() => router.push('/(tabs)/explore')}
+          onPress={() => {
+            console.log('Pagina de profil trebuie configurată');
+            Alert.alert('Informație', 'Această pagină nu este încă configurată.');
+          }}
         >
           <Ionicons name="person-outline" size={24} color="#666" />
           <Text style={styles.navText}>Profil</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   )
 }
 
@@ -108,6 +226,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  feedList: {
+    paddingBottom: 10,
   },
   header: {
     flexDirection: 'row',
@@ -144,13 +265,11 @@ const styles = StyleSheet.create({
   settingsButton: {
     padding: 5,
   },
-  content: {
-    flex: 1,
-  },
   storiesContainer: {
     padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    backgroundColor: '#fff',
   },
   storyItem: {
     alignItems: 'center',
@@ -171,6 +290,7 @@ const styles = StyleSheet.create({
   },
   feedContainer: {
     padding: 15,
+    backgroundColor: '#fff',
   },
   sectionTitle: {
     fontSize: 18,
@@ -181,7 +301,7 @@ const styles = StyleSheet.create({
   emptyFeed: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 30,
+    padding: 20,
   },
   emptyFeedText: {
     fontSize: 16,
@@ -198,6 +318,18 @@ const styles = StyleSheet.create({
   createPostText: {
     color: '#fff',
     fontWeight: 'bold',
+  },
+  dbDataContainer: {
+    backgroundColor: '#f9f9f9',
+    marginTop: 10,
+  },
+  dbDataTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 5,
+    marginTop: 10,
+    marginLeft: 15,
+    color: '#333',
   },
   bottomNav: {
     flexDirection: 'row',

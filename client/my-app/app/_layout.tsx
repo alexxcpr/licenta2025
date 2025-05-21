@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 //Clerk
 import { ClerkProvider, useAuth } from '@clerk/clerk-expo'
@@ -39,10 +40,12 @@ export default function RootLayout() {
       publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!}
     >
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <View style={{ flex: 1 }}>
-          <Slot />
-          <StatusBar style="auto" />
-        </View>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <View style={{ flex: 1 }}>
+            <Slot />
+            <StatusBar style="auto" />
+          </View>
+        </GestureHandlerRootView>
       </ThemeProvider>
     </ClerkProvider>
   );

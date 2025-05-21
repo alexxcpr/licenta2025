@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { supabase } from '../utils/supabase';
 
@@ -10,11 +10,55 @@ interface TestData {
   boolean: boolean;
 }
 
-export default function DbTestQuery() {
+interface Props {
+  onRefreshTriggered?: () => void;
+}
+
+export default function DbTestQuery({ onRefreshTriggered }: Props) {
   const [data, setData] = useState<TestData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      // Executăm interogarea către tabelul test
+      const { data: testData, error } = await supabase
+        .from('test')
+        .select('*')
+        .order('id', { ascending: false });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Adăugăm informații de depanare
+      setDebugInfo(JSON.stringify(testData, null, 2));
+      
+      // Verificăm dacă avem date
+      if (testData && testData.length > 0) {
+        console.log('Date primite:', testData);
+        setData(testData as TestData[]);
+      } else {
+        console.log('Nu s-au primit date');
+        setData([]);
+      }
+    } catch (error: any) {
+      setError(error.message || 'A apărut o eroare la încărcarea datelor');
+      console.error('Eroare la încărcarea datelor:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Notificăm componenta părinte când datele sunt reîncărcate cu succes
+  useEffect(() => {
+    if (!loading && !error && onRefreshTriggered) {
+      onRefreshTriggered();
+    }
+  }, [loading, error, onRefreshTriggered]);
 
   useEffect(() => {
     // Verificăm dacă suntem în mediul browser
@@ -24,40 +68,8 @@ export default function DbTestQuery() {
       return;
     }
 
-    async function fetchData() {
-      try {
-        setLoading(true);
-        
-        // Executăm interogarea către tabelul test
-        const { data: testData, error } = await supabase
-          .from('test')
-          .select('*');
-        
-        if (error) {
-          throw error;
-        }
-        
-        // Adăugăm informații de depanare
-        setDebugInfo(JSON.stringify(testData, null, 2));
-        
-        // Verificăm dacă avem date
-        if (testData && testData.length > 0) {
-          console.log('Date primite:', testData);
-          setData(testData as TestData[]);
-        } else {
-          console.log('Nu s-au primit date');
-          setData([]);
-        }
-      } catch (error: any) {
-        setError(error.message || 'A apărut o eroare la încărcarea datelor');
-        console.error('Eroare la încărcarea datelor:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   if (loading) {
     return (
@@ -78,7 +90,7 @@ export default function DbTestQuery() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Date din tabelul test</Text>
+      {/* <Text style={styles.title}>Postari acasa</Text> */}
       
       {data.length === 0 ? (
         <View>
@@ -102,6 +114,9 @@ export default function DbTestQuery() {
     </View>
   );
 }
+
+// Exportăm și funcția fetchData pentru a putea fi apelată din exterior
+export { DbTestQuery };
 
 const styles = StyleSheet.create({
   container: {
