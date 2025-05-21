@@ -1,13 +1,29 @@
 import 'react-native-url-polyfill/auto'
 import { createClient } from '@supabase/supabase-js'
 
-// Folosim o implementare simplă de stocare pentru sesiunea de inițializare
-const simpleStorage = {
+// Verificăm dacă suntem în browser sau în mediul server
+const isBrowser = typeof window !== 'undefined'
+
+// Importăm AsyncStorage doar în mediul browser
+let AsyncStorage: any = null
+if (isBrowser) {
+  AsyncStorage = require('@react-native-async-storage/async-storage').default
+}
+
+// Cream un obiect de stocare care verifică mediul în care rulează
+const supabaseStorage = {
   getItem: (key: string) => {
-    return null // La inițializare, nu avem date de sesiune
+    if (!isBrowser) return Promise.resolve(null)
+    return AsyncStorage.getItem(key)
   },
-  setItem: (key: string, value: string) => {},
-  removeItem: (key: string) => {}
+  setItem: (key: string, value: string) => {
+    if (!isBrowser) return Promise.resolve()
+    return AsyncStorage.setItem(key, value)
+  },
+  removeItem: (key: string) => {
+    if (!isBrowser) return Promise.resolve()
+    return AsyncStorage.removeItem(key)
+  }
 }
 
 export const supabase = createClient(
@@ -15,9 +31,15 @@ export const supabase = createClient(
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "",
   {
     auth: {
-      storage: simpleStorage,
+      storage: supabaseStorage,  // Folosim storage-ul nostru personalizat
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,
     },
+    // Forțează folosirea WebSocket-ului din browser
+    realtime: {
+      params: {
+        eventsPerSecond: 1
+      },
+    }
   })

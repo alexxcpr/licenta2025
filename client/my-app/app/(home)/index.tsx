@@ -1,5 +1,5 @@
-import { SignedIn, SignedOut, useUser } from '@clerk/clerk-expo'
-import { Link, useRouter } from 'expo-router'
+import { useUser } from '@clerk/clerk-expo'
+import { useRouter } from 'expo-router'
 import { Text, View, StyleSheet, Image, TouchableOpacity, ScrollView } from 'react-native'
 import { SignOutButton } from '../../components/SignOutButton'
 import { Ionicons } from '@expo/vector-icons'
@@ -21,6 +21,7 @@ export default function HomePage() {
           <View style={styles.welcomeText}>
             <Text style={styles.greeting}>Bună,</Text>
             <Text style={styles.username}>{user?.username || 'Utilizator'}</Text>
+            <SignOutButton />
           </View>
         </View>
         <TouchableOpacity 

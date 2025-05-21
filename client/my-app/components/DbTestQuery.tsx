@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { supabase } from '../utils/supabase';
 
 // Definim interfața pentru datele din tabelul test
@@ -17,6 +17,13 @@ export default function DbTestQuery() {
   const [debugInfo, setDebugInfo] = useState<string>('');
 
   useEffect(() => {
+    // Verificăm dacă suntem în mediul browser
+    if (typeof window === 'undefined') {
+      setError('Această componentă necesită acces la window (rulează doar în browser)');
+      setLoading(false);
+      return;
+    }
+
     async function fetchData() {
       try {
         setLoading(true);
@@ -113,11 +120,23 @@ const styles = StyleSheet.create({
     padding: 16,
     marginVertical: 8,
     borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    ...(Platform.OS === 'web'
+      ? {
+          boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
+        }
+      : Platform.OS === 'android'
+        ? {
+            elevation: 2,
+          }
+        : Platform.OS === 'ios'
+          ? {
+              shadowColor: 'transparent',
+              shadowOpacity: 0,
+              shadowRadius: 0,
+              shadowOffset: { height: 0, width: 0 },
+              elevation: 0,
+            }
+          : {}),
   },
   itemText: {
     fontSize: 16,
