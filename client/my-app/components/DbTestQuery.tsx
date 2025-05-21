@@ -1,13 +1,16 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Platform, Image, Dimensions } from 'react-native';
 import { supabase } from '../utils/supabase';
 
-// Definim interfața pentru datele din tabelul test
-interface TestData {
-  id: number;
-  coloana1: string;
-  numar: number;
-  boolean: boolean;
+// Definim interfața pentru datele din tabelul post conform structurii din Supabase
+interface PostData {
+  id_post: number;
+  content: string;
+  image_url: string;
+  id_user: string;
+  is_published: boolean;
+  date_created: string;
+  date_updated: string;
 }
 
 interface Props {
@@ -15,32 +18,33 @@ interface Props {
 }
 
 export default function DbTestQuery({ onRefreshTriggered }: Props) {
-  const [data, setData] = useState<TestData[]>([]);
+  const [data, setData] = useState<PostData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
+  const screenWidth = Dimensions.get('window').width;
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       
-      // Executăm interogarea către tabelul test
-      const { data: testData, error } = await supabase
-        .from('test')
+      // Executăm interogarea către tabelul post
+      const { data: postData, error } = await supabase
+        .from('post')
         .select('*')
-        .order('id', { ascending: false });
+        .order('date_created', { ascending: false });
       
       if (error) {
         throw error;
       }
       
       // Adăugăm informații de depanare
-      setDebugInfo(JSON.stringify(testData, null, 2));
+      setDebugInfo(JSON.stringify(postData, null, 2));
       
       // Verificăm dacă avem date
-      if (testData && testData.length > 0) {
-        console.log('Date primite:', testData);
-        setData(testData as TestData[]);
+      if (postData && postData.length > 0) {
+        console.log('Date primite:', postData);
+        setData(postData as PostData[]);
       } else {
         console.log('Nu s-au primit date');
         setData([]);
@@ -75,7 +79,7 @@ export default function DbTestQuery({ onRefreshTriggered }: Props) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#0000ff" />
-        <Text style={styles.loadingText}>Se încarcă datele...</Text>
+        <Text style={styles.loadingText}>Se încarcă postările...</Text>
       </View>
     );
   }
@@ -88,25 +92,44 @@ export default function DbTestQuery({ onRefreshTriggered }: Props) {
     );
   }
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ro-RO', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   return (
     <View style={styles.container}>
-      {/* <Text style={styles.title}>Postari acasa</Text> */}
-      
       {data.length === 0 ? (
         <View>
-          <Text style={styles.emptyText}>Nu există date în tabel</Text>
-          <Text style={styles.debugText}>Informații de depanare: {debugInfo}</Text>
+          <Text style={styles.emptyText}>Nu există postări încă</Text>
+          {__DEV__ && (
+            <Text style={styles.debugText}>Informații de depanare: {debugInfo}</Text>
+          )}
         </View>
       ) : (
         <FlatList
           data={data}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => item.id_post.toString()}
           renderItem={({ item }) => (
             <View style={styles.item}>
-              <Text style={styles.itemText}>ID: {item.id}</Text>
-              <Text style={styles.itemText}>Coloana1: {item.coloana1}</Text>
-              <Text style={styles.itemText}>Număr: {item.numar}</Text>
-              <Text style={styles.itemText}>Boolean: {item.boolean ? 'Da' : 'Nu'}</Text>
+              {item.image_url && (
+                <Image 
+                  source={{ uri: item.image_url }} 
+                  style={[styles.postImage, { width: screenWidth - 64 }]} 
+                  resizeMode="cover"
+                />
+              )}
+              <View style={styles.postContent}>
+                <Text style={styles.contentText}>{item.content}</Text>
+                <Text style={styles.dateText}>Publicat: {formatDate(item.date_created)}</Text>
+                <Text style={styles.userText}>Utilizator ID: {item.id_user}</Text>
+              </View>
             </View>
           )}
         />
@@ -124,12 +147,6 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#f5f5f5',
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
   item: {
     backgroundColor: 'white',
     padding: 16,
@@ -145,17 +162,34 @@ const styles = StyleSheet.create({
           }
         : Platform.OS === 'ios'
           ? {
-              shadowColor: 'transparent',
-              shadowOpacity: 0,
-              shadowRadius: 0,
-              shadowOffset: { height: 0, width: 0 },
-              elevation: 0,
+              shadowColor: '#000',
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+              shadowOffset: { height: 2, width: 0 },
             }
           : {}),
   },
-  itemText: {
+  postImage: {
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  postContent: {
+    padding: 4,
+  },
+  contentText: {
     fontSize: 16,
+    marginBottom: 8,
+    lineHeight: 22,
+  },
+  dateText: {
+    fontSize: 14,
+    color: '#666',
     marginBottom: 4,
+  },
+  userText: {
+    fontSize: 14,
+    color: '#888',
   },
   loadingText: {
     marginTop: 16,

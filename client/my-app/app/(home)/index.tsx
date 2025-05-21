@@ -98,8 +98,7 @@ export default function HomePage() {
               <TouchableOpacity 
                 style={styles.createPostButton}
                 onPress={() => {
-                  console.log('Pagina de explore trebuie configurată');
-                  Alert.alert('Informație', 'Această pagină nu este încă configurată.');
+                  router.push('/(home)/create-post');
                 }}
               >
                 <Text style={styles.createPostText}>Creează prima postare</Text>
@@ -137,18 +136,20 @@ export default function HomePage() {
         <View style={styles.welcomeText}>
           <Text style={styles.greeting}>Bună,</Text>
           <Text style={styles.username}>{user?.username || 'Utilizator'}</Text>
-          <SignOutButton />
         </View>
       </View>
-      <TouchableOpacity 
-        style={styles.settingsButton}
-        onPress={() => {
-          console.log('Pagina de explore trebuie configurată');
-          Alert.alert('Informație', 'Această pagină nu este încă configurată.');
-        }}
-      >
-        <Ionicons name="settings-outline" size={24} color="#333" />
-      </TouchableOpacity>
+      <View style={styles.headerButtons}>
+        <TouchableOpacity 
+          style={styles.settingsButton}
+          onPress={() => {
+            console.log('Pagina de explore trebuie configurată');
+            Alert.alert('Informație', 'Această pagină nu este încă configurată.');
+          }}
+        >
+          <Ionicons name="settings-outline" size={24} color="#333" />
+        </TouchableOpacity>
+        <SignOutButton />
+      </View>
     </View>
   )
 
@@ -235,7 +236,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 15,
-    paddingTop: 50,
+    paddingTop: 30,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
@@ -245,9 +246,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   profileImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 40,
     marginRight: 10,
   },
   welcomeText: {
@@ -264,6 +265,10 @@ const styles = StyleSheet.create({
   },
   settingsButton: {
     padding: 5,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   storiesContainer: {
     padding: 15,
