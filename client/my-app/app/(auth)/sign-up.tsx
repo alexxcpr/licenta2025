@@ -2,6 +2,7 @@ import * as React from 'react'
 import { Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native'
 import { useSignUp } from '@clerk/clerk-expo'
 import { Link, useRouter } from 'expo-router'
+import { supabase } from '../../utils/supabase'
 
 export default function SignUpScreen() {
   const { isLoaded, signUp, setActive } = useSignUp()
@@ -12,6 +13,7 @@ export default function SignUpScreen() {
   const [password, setPassword] = React.useState('')
   const [pendingVerification, setPendingVerification] = React.useState(false)
   const [code, setCode] = React.useState('')
+  const [error, setError] = React.useState('')
 
   // Handle submission of sign-up form
   const onSignUpPress = async () => {
@@ -35,6 +37,32 @@ export default function SignUpScreen() {
       // See https://clerk.com/docs/custom-flows/error-handling
       // for more info on error handling
       console.error(JSON.stringify(err, null, 2))
+      setError('A apărut o eroare la înregistrare. Încercați din nou.')
+    }
+  }
+
+  // Funcția pentru salvarea utilizatorului în Supabase
+  const saveUserToSupabase = async (userId: string, email: string, username: string) => {
+    try {
+      const { error } = await supabase
+        .from('user')
+        .insert([
+          { 
+            id_user: userId,
+            email: email,
+            username: username,
+          }
+        ]);
+      
+      if (error) {
+        console.error('Eroare la salvarea în Supabase:', error);
+        return false;
+      }
+      
+      return true;
+    } catch (err) {
+      console.error('Excepție la salvarea în Supabase:', err);
+      return false;
     }
   }
 
@@ -51,17 +79,30 @@ export default function SignUpScreen() {
       // If verification was completed, set the session to active
       // and redirect the user
       if (signUpAttempt.status === 'complete') {
+        // Obține ID-ul utilizatorului din sesiunea creată
+        const userId = signUpAttempt.createdUserId;
+        
+        // Salvează utilizatorul în Supabase
+        if (userId) {
+          const savedToSupabase = await saveUserToSupabase(userId, emailAddress, username);
+          if (!savedToSupabase) {
+            console.error('Nu s-a putut salva utilizatorul în Supabase');
+          }
+        }
+        
         await setActive({ session: signUpAttempt.createdSessionId })
         router.replace('/')
       } else {
         // If the status is not complete, check why. User may need to
         // complete further steps.
         console.error(JSON.stringify(signUpAttempt, null, 2))
+        setError('Verificarea nu a fost completată. Încercați din nou.')
       }
     } catch (err) {
       // See https://clerk.com/docs/custom-flows/error-handling
       // for more info on error handling
       console.error(JSON.stringify(err, null, 2))
+      setError('A apărut o eroare la verificare. Încercați din nou.')
     }
   }
 
@@ -71,6 +112,8 @@ export default function SignUpScreen() {
         <View style={styles.formContainer}>
           <Text style={styles.title}>Verify your email</Text>
           <Text style={styles.subtitle}>We sent you a verification code</Text>
+          
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
           
           <TextInput
             style={styles.input}
@@ -93,6 +136,8 @@ export default function SignUpScreen() {
       <View style={styles.formContainer}>
         <Text style={styles.title}>Create Account</Text>
         <Text style={styles.subtitle}>Join us today</Text>
+        
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
         
         <TextInput
           style={styles.input}
@@ -189,6 +234,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  errorText: {
+    color: '#ff3b30',
+    marginBottom: 15,
+    textAlign: 'center',
+    fontSize: 14,
   },
   linkContainer: {
     flexDirection: 'row',

@@ -26,9 +26,13 @@ const supabaseStorage = {
   }
 }
 
+// Definim URL-ul și cheia Supabase
+export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || "";
+export const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "";
+
 export const supabase = createClient(
-  process.env.EXPO_PUBLIC_SUPABASE_URL || "",
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "",
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
   {
     auth: {
       storage: supabaseStorage,  // Folosim storage-ul nostru personalizat
@@ -43,3 +47,13 @@ export const supabase = createClient(
       },
     }
   })
+
+// Funcție pentru a obține URL-ul Supabase
+export const getSupabaseUrl = () => {
+  return SUPABASE_URL;
+};
+
+// Funcție pentru a obține cheia anonimă Supabase
+export const getSupabaseAnonKey = () => {
+  return SUPABASE_ANON_KEY;
+};
