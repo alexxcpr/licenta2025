@@ -11,11 +11,12 @@ Dezvoltarea unei platforme de rețea socială dedicată profesioniștilor dintr-
  ## TODO:
  ### DE IMPLEMENTAT (NOU)
  #### pagina profil 
-    - postarile userului
-    - numar postari
+    x postarile userului
+    x numar postari
     - numar conexiuni
-    - posibilitate schimbare poza profil
-    - posibilitate schimbare descriere cont
+    x posibilitate schimbare poza profil
+    x posibilitate schimbare nume
+    x posibilitate schimbare descriere cont
     - posibilitate incarcare CV
 #### chat in timp real:
     - chat individual
@@ -38,6 +39,15 @@ Dezvoltarea unei platforme de rețea socială dedicată profesioniștilor dintr-
       -  1)cele care au cei mai multi membrii facand parte din conexiunile userului
       -  2)cele care au cei mai multi membrii ca numar
       -  3)cele care au cele mai multe postari
+#### grupuri
+    - creare grup
+    - stergere grup
+    - trimitere invititatie
+    - join group
+    - leave group
+    - lista cu membrii si group roles
+    - pagina pentru grup cu postarile grupului
+    - group chat
 #### dashboard admin:
    - postari raportate
    - conturi raportate
@@ -47,5 +57,7 @@ Dezvoltarea unei platforme de rețea socială dedicată profesioniștilor dintr-
 #### containerizare kubernetes - imi trebuie?nu am server dar e bun pentru cunostinte
 
 ### DE IMBUNATATIT
+- de scos partea de story-uri, se renunta la idee, pe linkedin nu sunt story-uri
+- de scos partea de feed de pe home page, exista deja postari acasa
 - cand se creeaza o postare, sa se aleaga partea din imagine care sa apara si in postare, rezolutia imaginii din postare sa coincida cu ce s-a ales
 - pe ios sa se afiseze dialog ca pe web, nu alerte
