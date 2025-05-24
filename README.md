@@ -9,7 +9,7 @@ Dezvoltarea unei platforme de rețea socială dedicată profesioniștilor dintr-
     - Supabase (db)
 
  ## TODO:
- ### IMPLEMENTARI NOI
+ ### DE IMPLEMENTAT (NOU)
  #### pagina profil 
     - postarile userului
     - numar postari
@@ -46,6 +46,6 @@ Dezvoltarea unei platforme de rețea socială dedicată profesioniștilor dintr-
 #### imagine in docker
 #### containerizare kubernetes - imi trebuie?nu am server dar e bun pentru cunostinte
 
-### IMBUNATATIRI
+### DE IMBUNATATIT
 - cand se creeaza o postare, sa se aleaga partea din imagine care sa apara si in postare, rezolutia imaginii din postare sa coincida cu ce s-a ales
 - pe ios sa se afiseze dialog ca pe web, nu alerte

@@ -1,8 +1,18 @@
 import { useSignIn, } from '@clerk/clerk-expo'
-
 import { Link, useRouter } from 'expo-router'
 import { Text, TextInput, TouchableOpacity, View, StyleSheet, KeyboardAvoidingView, Platform, StatusBar } from 'react-native'
-import React from 'react'
+import React, { memo } from 'react'
+
+// Optimizăm componentele statice prin memorizare
+const Title = memo(() => <Text style={styles.title}>Sign in</Text>);
+const LinkToSignUp = memo(() => (
+  <View style={styles.linkContainer}>
+    <Text style={styles.text}>Don't have an account?</Text>
+    <Link href="../(auth)/sign-up">
+      <Text style={styles.link}>Sign up</Text>
+    </Link>
+  </View>
+));
 
 export default function Page() {
   const { signIn, setActive, isLoaded } = useSignIn()
@@ -30,18 +40,13 @@ export default function Page() {
       // and redirect the user
       if (signInAttempt.status === 'complete') {
         await setActive({ session: signInAttempt.createdSessionId })
-        router.replace('/')
+        router.replace('/(home)')
       } else {
-        // If the status isn't complete, check why. User might need to
-        // complete further steps.
-        console.error(JSON.stringify(signInAttempt, null, 2))
+        // If the status isn't complete, check why
         setError('Autentificarea nu a fost completată. Verificați datele introduse.')
       }
     } catch (err: any) {
-      // See https://clerk.com/docs/custom-flows/error-handling
-      // for more info on error handling
-      console.error(JSON.stringify(err, null, 2))
-      setError(err?.errors?.[0]?.message || 'A apărut o eroare la autentificare. Încercați din nou.')
+      setError(err?.errors?.[0]?.message || 'A apărut o eroare la autentificare. Încercați din nou.' + JSON.stringify(err, null, 2))
     }
   }
 
@@ -60,7 +65,7 @@ export default function Page() {
         style={styles.container}
       >
         <View style={styles.formContainer}>
-          <Text style={styles.title}>Sign in</Text>
+          <Title />
           
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
           
@@ -70,7 +75,7 @@ export default function Page() {
             value={emailAddress}
             placeholder="Enter email"
             placeholderTextColor="#666"
-            onChangeText={(emailAddress) => setEmailAddress(emailAddress)}
+            onChangeText={setEmailAddress}
             onKeyPress={handleKeyPress}
           />
           
@@ -80,7 +85,7 @@ export default function Page() {
             placeholder="Enter password"
             placeholderTextColor="#666"
             secureTextEntry={true}
-            onChangeText={(password) => setPassword(password)}
+            onChangeText={setPassword}
             onKeyPress={handleKeyPress}
           />
           
@@ -88,12 +93,7 @@ export default function Page() {
             <Text style={styles.buttonText}>Continue</Text>
           </TouchableOpacity>
           
-          <View style={styles.linkContainer}>
-            <Text style={styles.text}>Don't have an account?</Text>
-            <Link href="../(auth)/sign-up">
-              <Text style={styles.link}>Sign up</Text>
-            </Link>
-          </View>
+          <LinkToSignUp />
         </View>
       </KeyboardAvoidingView>
     </>
