@@ -4,34 +4,40 @@
     "slug": "expertlink",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/new-icon.png",
+    "icon": "./assets/images/app-logo-v2.png",
     "scheme": "expertlink",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/app-logo-v2.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#b1b7f0"
+    },
     "ios": {
       "supportsTablet": true,
-      "icon": "./assets/images/new-icon.png"
+      "icon": "./assets/images/app-logo-v2.png",
+      "backgroundColor": "#b1b7f0"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/new-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/images/app-logo-v2.png",
+        "backgroundColor": "#b1b7f0"
       }
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/new-icon.png"
+      "favicon": "./assets/images/app-logo-v2.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/new-icon.png",
+          "image": "./assets/images/app-logo-v2.png",
           "imageWidth": 300,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#b1b7f0"
         }
       ],
       "expo-secure-store"
