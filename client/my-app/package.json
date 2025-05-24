@@ -15,9 +15,9 @@
     "preset": "jest-expo"
   },
   "dependencies": {
-    "@clerk/clerk-expo": "^2.11.7",
-    "@expo/vector-icons": "^14.1.0",
+    "@clerk/clerk-expo": "^2.11.8",
     "@expo/ngrok": "^4.1.0",
+    "@expo/vector-icons": "^14.1.0",
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-navigation/bottom-tabs": "^7.2.0",
     "@react-navigation/native": "^7.0.14",
@@ -48,9 +48,9 @@
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.10.0",
+    "react-native-svg": "15.11.2",
     "react-native-web": "^0.20.0",
-    "react-native-webview": "13.13.5",
-    "react-native-svg": "15.11.2"
+    "react-native-webview": "13.13.5"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

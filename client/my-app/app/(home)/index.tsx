@@ -245,10 +245,7 @@ export default function HomePage() {
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.navItem}
-            onPress={() => {
-              console.log('Pagina de profil trebuie configurată');
-              Alert.alert('Informație', 'Această pagină nu este încă configurată.');
-            }}
+            onPress={() => router.push('/(home)/profile')}
           >
             <Ionicons name="person-outline" size={24} color="#666" />
             <Text style={styles.navText}>Profil</Text>
