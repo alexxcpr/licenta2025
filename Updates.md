@@ -2,6 +2,13 @@
 
 ⬇️alpha -> 🔜beta -> 🔜release candidate(RC) -> 🔜versiune finala
 
+## alpha 01.0.1
+*IMPLEMENTARI NOI*
+
+*IMBUNATATIRI*
+
+*BUG FIXES*
+
 ## alpha 01.0.0
     ce functioneaza acum?: 
         - 🔐sistem login cu clerk:
