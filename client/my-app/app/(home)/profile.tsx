@@ -17,6 +17,8 @@ import EditProfileModal from './components/EditProfileModal';
 import ProfileHeader from './components/ProfileHeader';
 import UserPostsGrid from './components/UserPostsGrid';
 import useUserProfile from './hooks/useUserProfile';
+import PostDetailModal from '../../components/PostDetailModal';
+import { Post } from '../utils/types';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -36,8 +38,43 @@ export default function ProfileScreen() {
 
   const [editModalVisible, setEditModalVisible] = useState(false);
 
+  // State pentru modal-ul de detalii postare
+  const [postDetailVisible, setPostDetailVisible] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<any>(null);
+  const [selectedPostUser, setSelectedPostUser] = useState<any>(null);
+
   const openEditModal = () => {
     setEditModalVisible(true);
+  };
+
+  // Funcții pentru gestionarea modalului de detalii postare
+  const openPostDetail = (post: Post) => {
+    // Convertim tipul Post la tipul compatibil cu PostDetailModal
+    const postData = {
+      id_post: post.id_post,
+      content: post.content,
+      image_url: post.image_url || '',
+      id_user: post.id_user,
+      is_published: post.is_published,
+      date_created: post.date_created,
+      date_updated: post.date_updated,
+    };
+
+    const userData = {
+      id: user?.id || '',
+      username: user?.username || profile?.username || 'Utilizator',
+      avatar_url: user?.imageUrl || profile?.profile_picture || undefined,
+    };
+
+    setSelectedPost(postData);
+    setSelectedPostUser(userData);
+    setPostDetailVisible(true);
+  };
+
+  const closePostDetail = () => {
+    setPostDetailVisible(false);
+    setSelectedPost(null);
+    setSelectedPostUser(null);
   };
 
   if (loading) {
@@ -84,7 +121,7 @@ export default function ProfileScreen() {
             <Text style={styles.headerTitle}>
               {profile?.username || user?.username || 'Profil'}
             </Text>
-            <TouchableOpacity style={styles.settingsButton} onPress={() => console.log('TODO: Implement settings navigation') /* router.push('/(home)/settings') */ }>
+            <TouchableOpacity style={styles.settingsButton} onPress={() => console.log('TODO: De facut trimiterea catre setari')}>
               <Ionicons name="settings-outline" size={24} color="#333" />
             </TouchableOpacity>
           </View>
@@ -97,7 +134,7 @@ export default function ProfileScreen() {
             onEditPress={openEditModal}
           />
 
-          <UserPostsGrid posts={posts} />
+          <UserPostsGrid posts={posts} onPostPress={openPostDetail} />
           
         </ScrollView>
 
@@ -108,6 +145,14 @@ export default function ProfileScreen() {
           profile={profile}
           loadProfile={loadProfile}
           requestUsernameChangeVerification={requestUsernameChangeVerification}
+        />
+
+        <PostDetailModal
+          visible={postDetailVisible}
+          onClose={closePostDetail}
+          post={selectedPost}
+          postUser={selectedPostUser}
+          currentUserId={user?.id}
         />
 
         <View style={styles.bottomNav}>

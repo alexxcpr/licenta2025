@@ -48,7 +48,7 @@ export default function ProfileHeader({
           </View>
           
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>0</Text>
+            <Text style={styles.statNumber}>0</Text> 
             <Text style={styles.statLabel}>Grupuri</Text>
           </View>
         </View>

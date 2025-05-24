@@ -9,15 +9,23 @@ Dezvoltarea unei platforme de rețea socială dedicată profesioniștilor dintr-
     - Supabase (db)
 
  ## TODO:
+ TODO: Definește acțiunea la apăsarea unei postări (Ce se intampla cand se apasa pe o postare)
+ TODO: Adaugă când implementăm partajarea (Ce se intampla cand se apasa pe distribuie cont)
+ TODO: Implement settings navigation (De facut ruta catre setari + pagina setari)
  ### DE IMPLEMENTAT (NOU)
  #### pagina profil 
     x postarile userului
     x numar postari
-    - numar conexiuni
+    - numar conexiuni:
+      - trebuie tabela noua + relatii in supabase
+      - trebuie adaugata in ErDiagram.md
+      - 
     x posibilitate schimbare poza profil
     x posibilitate schimbare nume
     x posibilitate schimbare descriere cont
-    - posibilitate incarcare CV
+    - posibilitate incarcare CV: incarcare pdf
+#### pagina setari
+
 #### chat in timp real:
     - chat individual
     - chat de grup

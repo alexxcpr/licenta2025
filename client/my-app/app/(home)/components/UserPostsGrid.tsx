@@ -14,12 +14,12 @@ import { useRouter } from 'expo-router'; // Necesar pentru butonul "Adaugă prim
 
 interface UserPostsGridProps {
   posts: Post[];
-  // onPostPress: (postId: number) => void; // TODO: Definește acțiunea la apăsarea unei postări
+  onPostPress?: (post: Post) => void; // Callback pentru apăsarea unei postări
 }
 
 const windowWidth = Dimensions.get('window').width;
 
-export default function UserPostsGrid({ posts }: UserPostsGridProps) {
+export default function UserPostsGrid({ posts, onPostPress }: UserPostsGridProps) {
   const router = useRouter();
 
   const renderPostItem = ({ item }: { item: Post }) => (
@@ -27,7 +27,9 @@ export default function UserPostsGrid({ posts }: UserPostsGridProps) {
       style={[styles.postItem, { width: windowWidth / 3 - 4 }]}
       onPress={() => {
         console.log('Vizualizare postare (din UserPostsGrid):', item.id_post);
-        // Implementează navigarea către vizualizarea postării dacă este necesar
+        if (onPostPress) {
+          onPostPress(item);
+        }
       }}
     >
       {item.image_url ? (

@@ -2,6 +2,8 @@ import React, { useEffect, useState, useCallback, forwardRef, useImperativeHandl
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, Platform, Image, Dimensions, TouchableOpacity, Alert, SafeAreaView, Pressable, Modal } from 'react-native';
 import { supabase } from '../utils/supabase';
 import { Ionicons } from '@expo/vector-icons';
+import PostDetailModal from './PostDetailModal';
+import { useUser } from '@clerk/clerk-expo';
 
 // Definim interfața pentru datele din tabelul post conform structurii din Supabase
 interface PostData {
@@ -113,6 +115,7 @@ const isAndroid = Platform.OS === 'android';
 const isNative = isIOS || isAndroid;
 
 const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
+  const { user } = useUser();
   const [posts, setPosts] = useState<PostData[]>([]);
   const [comments, setComments] = useState<{[postId: number]: CommentData[]}>({});
   const [users, setUsers] = useState<{[userId: string]: UserData}>({});
@@ -135,6 +138,11 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
   // State pentru starea de like și salvare pentru fiecare postare
   const [likedPosts, setLikedPosts] = useState<{[postId: number]: boolean}>({});
   const [savedPosts, setSavedPosts] = useState<{[postId: number]: boolean}>({});
+
+  // State pentru modal-ul de detalii postare
+  const [postDetailVisible, setPostDetailVisible] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<PostData | null>(null);
+  const [selectedPostUser, setSelectedPostUser] = useState<UserData | null>(null);
 
   // Funcție universală de afișare a dialogurilor
   const showDialog = (title: string, message: string, buttons?: any[]) => {
@@ -445,6 +453,20 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
     }
   };
 
+  // Funcție pentru deschiderea modalului de detalii postare
+  const openPostDetail = (post: PostData) => {
+    setSelectedPost(post);
+    setSelectedPostUser(users[post.id_user] || null);
+    setPostDetailVisible(true);
+  };
+
+  // Funcție pentru închiderea modalului de detalii postare
+  const closePostDetail = () => {
+    setPostDetailVisible(false);
+    setSelectedPost(null);
+    setSelectedPostUser(null);
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -494,19 +516,24 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
                   </Pressable>
                 </View>
 
-                {/* Conținutul postării */}
-                <Text style={styles.contentText}>{item.content}</Text>
+                {/* Conținutul postării - clickabil */}
+                <TouchableOpacity 
+                  onPress={() => openPostDetail(item)}
+                  activeOpacity={0.9}
+                >
+                  <Text style={styles.contentText}>{item.content}</Text>
 
-                {/* Imaginea postării */}
-                {item.image_url && (
-                  <View style={styles.imageContainer}>
-                    <Image 
-                      source={{ uri: item.image_url }} 
-                      style={styles.postImage} 
-                      resizeMode="cover"
-                    />
-                  </View>
-                )}
+                  {/* Imaginea postării - clickabilă */}
+                  {item.image_url && (
+                    <View style={styles.imageContainer}>
+                      <Image 
+                        source={{ uri: item.image_url }} 
+                        style={styles.postImage} 
+                        resizeMode="cover"
+                      />
+                    </View>
+                  )}
+                </TouchableOpacity>
 
                 {/* Butoane de acțiune */}
                 <View style={styles.actionButtons}>
@@ -529,7 +556,7 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
                     </Pressable>
                     <Pressable 
                       onPress={() => {
-                        handleComment(item.id_post);
+                        openPostDetail(item);
                       }}
                       android_ripple={{ color: '#ddd', borderless: true }}
                       style={({ pressed }) => [
@@ -590,20 +617,31 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
                           styles.viewAllCommentsButton,
                           pressed && styles.linkPressed
                         ]}
-                        onPress={() => Alert.alert("Info", "Funcționalitatea de vizualizare a tuturor comentariilor va fi implementată în curând")}
+                        onPress={() => openPostDetail(item)}
                       >
                         <Text style={styles.viewAllComments}>Vezi toate comentariile...</Text>
                       </Pressable>
                     )}
                   </View>
                 ) : (
-                  <Text style={styles.noComments}>Nu există comentarii pentru această postare</Text>
+                  <TouchableOpacity onPress={() => openPostDetail(item)}>
+                    <Text style={styles.noComments}>Nu există comentarii pentru această postare</Text>
+                  </TouchableOpacity>
                 )}
               </View>
             )}
             contentContainerStyle={styles.listContent}
           />
         )}
+
+        {/* Modal pentru detaliile postării */}
+        <PostDetailModal
+          visible={postDetailVisible}
+          onClose={closePostDetail}
+          post={selectedPost}
+          postUser={selectedPostUser}
+          currentUserId={user?.id}
+        />
       </View>
     </SafeAreaView>
   );
