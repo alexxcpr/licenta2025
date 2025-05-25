@@ -4,7 +4,8 @@ import {
   getUserById, 
   createUser, 
   updateUser, 
-  deleteUser 
+  deleteUser,
+  getUserProfile
 } from '../controllers/user.controller';
 import { protect } from '../middleware/auth.middleware';
 
@@ -18,6 +19,7 @@ router.post('/', createUser);
 
 router.get('/', getAllUsers);
 router.get('/:id', getUserById);
+router.get('/profile/:id', getUserProfile);
 router.put('/:id', updateUser);
 router.delete('/:id', deleteUser);
 

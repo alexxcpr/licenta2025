@@ -16,6 +16,7 @@ interface ProfileHeaderProps {
   postCount: number;
   connectionCount: number;
   onEditPress: () => void;
+  isOwnProfile?: boolean;
   // onSharePress: () => void; // TODO: Adaugă când implementăm partajarea
 }
 
@@ -25,6 +26,7 @@ export default function ProfileHeader({
   postCount,
   connectionCount,
   onEditPress,
+  isOwnProfile = false,
 }: ProfileHeaderProps) {
   return (
     <View style={styles.profileInfoContainer}>
@@ -72,12 +74,14 @@ export default function ProfileHeader({
       </View>
 
       <View style={styles.actionButtonsContainer}>
-        <TouchableOpacity 
-          style={styles.editProfileButton}
-          onPress={onEditPress}
-        >
-          <Text style={styles.editButtonText}>Editează profilul</Text>
-        </TouchableOpacity>
+        {isOwnProfile && (
+          <TouchableOpacity 
+            style={styles.editProfileButton}
+            onPress={onEditPress}
+          >
+            <Text style={styles.editButtonText}>Editează profilul</Text>
+          </TouchableOpacity>
+        )}
         
         <TouchableOpacity style={styles.shareProfileButton} onPress={() => console.log('Share profile clicked')}>
           <Ionicons name="share-outline" size={20} color="#333" />

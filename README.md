@@ -10,20 +10,20 @@ Dezvoltarea unei platforme de rețea socială dedicată profesioniștilor dintr-
     - Express (backend)
 
  ## TODO:
- - TODO: Definește acțiunea la apăsarea unei postări (Ce se intampla cand se apasa pe o postare)
+ ✅ TODO: Definește acțiunea la apăsarea unei postări (Ce se intampla cand se apasa pe o postare)
  - TODO: Adaugă când implementăm partajarea (Ce se intampla cand se apasa pe distribuie cont)
  - TODO: Implement settings navigation (De facut ruta catre setari + pagina setari)
  ### DE IMPLEMENTAT (NOU)
  #### pagina profil 
-    x postarile userului
-    x numar postari
+    ✅ postarile userului
+    ✅ numar postari
     - numar conexiuni:
       - trebuie tabela noua + relatii in supabase
       - trebuie adaugata in ErDiagram.md
       - 
-    x posibilitate schimbare poza profil
-    x posibilitate schimbare nume
-    x posibilitate schimbare descriere cont
+    ✅ posibilitate schimbare poza profil
+    ✅ posibilitate schimbare nume
+    ✅ posibilitate schimbare descriere cont
     - posibilitate incarcare CV: incarcare pdf
 #### pagina setari
 
