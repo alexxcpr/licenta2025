@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { UserProfile } from '../../utils/types';
+import { UserProfile } from '../../../utils/types';
 import { UserResource } from '@clerk/types';
 
 interface ProfileHeaderProps {
@@ -31,7 +31,7 @@ export default function ProfileHeader({
       <View style={styles.profileHeader}>
         <Image 
           source={{ 
-            uri: profile?.profile_picture || user?.imageUrl || 'https://via.placeholder.com/90' 
+            uri: profile?.profile_picture || user?.imageUrl || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png' 
           }} 
           style={styles.profileImage}
         />

@@ -3,7 +3,7 @@ import { useUser, useClerk } from '@clerk/clerk-expo';
 import { useReverification } from '@clerk/clerk-react';
 import { Alert, Linking } from 'react-native';
 import { supabase } from '../../../utils/supabase';
-import { UserProfile, Post } from '../../utils/types';
+import { UserProfile, Post } from '../../../utils/types';
 // Nu importăm useRouter aici decât dacă o funcție mutată îl necesită direct și nu poate fi pasat
 
 export default function useUserProfile() {

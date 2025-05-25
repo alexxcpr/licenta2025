@@ -17,8 +17,8 @@ import EditProfileModal from './components/EditProfileModal';
 import ProfileHeader from './components/ProfileHeader';
 import UserPostsGrid from './components/UserPostsGrid';
 import useUserProfile from './hooks/useUserProfile';
-import PostDetailModal from '../../components/PostDetailModal';
-import { Post } from '../utils/types';
+import PostDetailModal from './components/PostDetailModal';
+import { Post } from '../../utils/types';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -53,7 +53,7 @@ export default function ProfileScreen() {
     const postData = {
       id_post: post.id_post,
       content: post.content,
-      image_url: post.image_url || '',
+      image_url: post.image_url || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images/post-error.png',
       id_user: post.id_user,
       is_published: post.is_published,
       date_created: post.date_created,

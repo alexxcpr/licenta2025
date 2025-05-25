@@ -4,6 +4,22 @@
 
 ## alpha 01.0.1
 *IMPLEMENTARI NOI*
+- implementare comentarii la postari
+- modal pentru a vedea detaliile unei postari + redesign alb
+- link catre pagina de profil a userului din header
+*IMBUNATATIRI*
+- redesign header
+- renuntat la sectiunea story
+- renuntat la feed-ul de pe home page
+- acum in home page se vad doar datele din db
+- numele utilizatorului din comentarii se afiseaza cu limita de 20 de caractere
+- numele utilizatorului din header se afiseaza cu limita de 10 de caractere
+*BUG FIXES*
+- comentariile nu se afisau corect, nu se vedea poza de profil si numele userului (aparea "Utilizator")
+  
+## alpha 01.0.2
+
+*IMPLEMENTARI NOI*
 
 *IMBUNATATIRI*
 
