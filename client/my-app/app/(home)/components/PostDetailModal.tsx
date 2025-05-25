@@ -72,6 +72,7 @@ export default function PostDetailModal({
   // Încărcare comentarii când se deschide modalul
   useEffect(() => {
     if (visible && post) {
+      console.log('[PostDetailModal] Date postare primite:', JSON.stringify(post, null, 2));
       loadComments();
     }
   }, [visible, post]);
@@ -111,13 +112,26 @@ export default function PostDetailModal({
         }
 
         // Combinăm datele comentariilor cu datele utilizatorilor
-        const enrichedComments = commentData.map(comment => ({
-          ...comment,
-          user: userData?.find(user => user.id_user === comment.id_user) || {
-            id: comment.id_user,
-            username: 'Utilizator necunoscut',
+        const enrichedComments = commentData.map(comment => {
+          const dbUser = userData?.find(u => u.id_user === comment.id_user);
+          let commentUser: UserData;
+          if (dbUser) {
+            commentUser = {
+              id: dbUser.id_user, 
+              username: dbUser.username || 'Utilizator necunoscut',
+              avatar_url: dbUser.profile_picture || undefined 
+            };
+          } else {
+            commentUser = {
+              id: comment.id_user,
+              username: 'Utilizator necunoscut',
+            };
           }
-        }));
+          return {
+            ...comment,
+            user: commentUser
+          };
+        });
 
         setComments(enrichedComments);
       } else {
@@ -249,7 +263,7 @@ export default function PostDetailModal({
           {/* Informații utilizator */}
           <View style={styles.userInfo}>
             <Image 
-              source={{ uri: postUser.avatar_url || 'https://via.placeholder.com/150' }} 
+              source={{ uri: postUser.avatar_url || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png' }} 
               style={styles.avatar} 
             />
             <Text style={styles.username}>{postUser.username}</Text>
@@ -257,7 +271,18 @@ export default function PostDetailModal({
 
           {/* Imaginea postării (dacă există) */}
           {post.image_url && (
-            <Image source={{ uri: post.image_url }} style={styles.postImage} />
+            <Image 
+              source={{ uri: post.image_url }} 
+              style={[styles.postImage, { height: 600, backgroundColor: 'transparent' }]}
+              onError={(e) => {
+                console.error(`[PostDetailModal] Eroare la încărcarea imaginii postării. URL încercat: ${post.image_url}`);
+                console.error('[PostDetailModal] Detalii eroare nativă:', e.nativeEvent.error);
+              }}
+              onLayout={(event) => {
+                const { width, height } = event.nativeEvent.layout;
+                console.log(`[PostDetailModal] Layout imagine: width=${width}, height=${height}`);
+              }}
+            />
           )}
 
           {/* Conținutul postării */}
@@ -297,27 +322,33 @@ export default function PostDetailModal({
             ) : (
               <>
                 {comments.length > 0 ? (
-                  comments.map((comment) => (
-                    <View key={comment.id_comment} style={styles.commentContainer}>
-                      <Image 
-                        source={{ 
-                          uri: comment.user?.avatar_url || 'https://placekitten.com/30/30' // Placeholder mai distinct
-                        }} 
-                        style={styles.commentAvatar} 
-                      />
-                      <View style={styles.commentContent}>
-                        <View style={styles.commentHeader}>
-                          <Text style={styles.commentUser}>
-                            {comment.user?.username || 'Utilizator necunoscut'}
-                          </Text>
-                          <Text style={styles.commentDate}>
-                            {formatTimeAgo(comment.date_created)}
-                          </Text>
+                  comments.map((comment) => {
+                    return (
+                      <View key={comment.id_comment} style={styles.commentContainer}>
+                        <Image 
+                          source={{ 
+                            uri: comment.user?.avatar_url || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png' 
+                          }} 
+                          style={styles.commentAvatar} 
+                          onError={(e) => {
+                            console.error(`[PostDetailModal] Eroare la încărcarea avatarului pentru comentariul ${comment.id_comment}. URL încercat: ${comment.user?.avatar_url}`);
+                            console.error('[PostDetailModal] Detalii eroare nativă avatar:', e.nativeEvent.error);
+                          }}
+                        />
+                        <View style={styles.commentContent}>
+                          <View style={styles.commentHeader}>
+                            <Text style={styles.commentUser}>
+                              { (comment.user?.username && comment.user.username.length > 20 ? comment.user.username.substring(0, 20) + '..' : comment.user?.username) || 'Utilizator necunoscut'}
+                            </Text>
+                            <Text style={styles.commentDate}>
+                              {formatTimeAgo(comment.date_created)}
+                            </Text>
+                          </View>
+                          <Text style={styles.commentText}>{comment.content}</Text>
                         </View>
-                        <Text style={styles.commentText}>{comment.content}</Text>
                       </View>
-                    </View>
-                  ))
+                    );
+                  })
                 ) : (
                   <Text style={styles.noCommentsText}>Nu există comentarii încă.</Text>
                 )}
@@ -348,7 +379,7 @@ export default function PostDetailModal({
             {addingComment ? (
               <ActivityIndicator size="small" color="#007AFF" />
             ) : (
-              <Ionicons name="send" size={20} color="#007AFF" />
+              <Ionicons name="send" size={20} color="#fff" />
             )}
           </TouchableOpacity>
         </View>

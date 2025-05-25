@@ -9,7 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Post } from '../../utils/types';
+import { Post } from '../../../utils/types';
 import { useRouter } from 'expo-router'; // Necesar pentru butonul "Adaugă prima postare"
 
 interface UserPostsGridProps {

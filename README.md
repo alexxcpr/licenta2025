@@ -7,11 +7,12 @@ Dezvoltarea unei platforme de rețea socială dedicată profesioniștilor dintr-
     - TypeScript
     - Clerk (auth)
     - Supabase (db)
+    - Express (backend)
 
  ## TODO:
- TODO: Definește acțiunea la apăsarea unei postări (Ce se intampla cand se apasa pe o postare)
- TODO: Adaugă când implementăm partajarea (Ce se intampla cand se apasa pe distribuie cont)
- TODO: Implement settings navigation (De facut ruta catre setari + pagina setari)
+ - TODO: Definește acțiunea la apăsarea unei postări (Ce se intampla cand se apasa pe o postare)
+ - TODO: Adaugă când implementăm partajarea (Ce se intampla cand se apasa pe distribuie cont)
+ - TODO: Implement settings navigation (De facut ruta catre setari + pagina setari)
  ### DE IMPLEMENTAT (NOU)
  #### pagina profil 
     x postarile userului
@@ -65,6 +66,7 @@ Dezvoltarea unei platforme de rețea socială dedicată profesioniștilor dintr-
 #### containerizare kubernetes - imi trebuie?nu am server dar e bun pentru cunostinte
 
 ### DE IMBUNATATIT
+- cand se sterge o postare sa se stearga si imaginea din bucket
 - de scos partea de story-uri, se renunta la idee, pe linkedin nu sunt story-uri
 - de scos partea de feed de pe home page, exista deja postari acasa
 - cand se creeaza o postare, sa se aleaga partea din imagine care sa apara si in postare, rezolutia imaginii din postare sa coincida cu ce s-a ales

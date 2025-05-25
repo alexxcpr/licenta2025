@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { UserProfile } from '../../utils/types'; // Calea corectată pentru tipuri
+import { UserProfile } from '../../../utils/types'; // Calea corectată pentru tipuri
 import { UserResource } from '@clerk/types'; 
 import { supabase } from '../../../utils/supabase'; // Calea pentru supabase este corectă
 
@@ -204,7 +204,7 @@ export default function EditProfileModal({
           <ScrollView style={styles.modalContent}>
             <View style={styles.imageSection}>
               <Image 
-                source={{ uri: selectedImage || user?.imageUrl || 'https://via.placeholder.com/120' }} 
+                source={{ uri: selectedImage || user?.imageUrl || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png' }} 
                 style={styles.editProfileImage} 
               />
               <TouchableOpacity 

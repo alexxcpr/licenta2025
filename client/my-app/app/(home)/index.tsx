@@ -24,13 +24,11 @@ export default function HomePage() {
   const [developerInfoVisible, setDeveloperInfoVisible] = useState(false)
 
   useEffect(() => {
-    // Populăm feed-ul cu toate tipurile de conținut
+    // Populăm feed-ul doar cu PostList
     setFeedItems([
-      { id: 'stories', type: 'story' },
-      { id: 'post-empty', type: 'post' },
       { id: 'db-data', type: 'dbdata' }
-    ])
-  }, [])
+    ]);
+  }, []);
 
   // Funcția care se declanșează când un PostList a terminat de reîncărcat datele
   const handlePostsRefreshed = useCallback(() => {
@@ -54,12 +52,10 @@ export default function HomePage() {
     
     // 2. Generăm noi ID-uri pentru toate elementele din feed pentru a forța re-renderarea
     const newFeedItems: FeedItem[] = [
-      { id: 'stories-' + new Date().getTime(), type: 'story' },
-      { id: 'post-empty-' + new Date().getTime(), type: 'post' },
       { id: 'db-data-' + new Date().getTime(), type: 'dbdata' }
-    ]
+    ];
     
-    setFeedItems(newFeedItems)
+    setFeedItems(newFeedItems);
     
     // 3. Simulăm sfârșitul reîmprospatării după o scurtă întârziere
     setTimeout(() => {
@@ -71,45 +67,6 @@ export default function HomePage() {
   // Funcție pentru a renderiza diferite tipuri de conținut în feed
   const renderFeedItem = ({ item }: { item: FeedItem }) => {
     switch (item.type) {
-      case 'story':
-        return (
-          <View style={styles.storiesContainer}>
-            <FlatList
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              data={[{ id: 'add-story' }]}
-              keyExtractor={(item) => item.id}
-              renderItem={() => (
-                <TouchableOpacity style={styles.storyItem}>
-                  <View style={styles.addStoryButton}>
-                    <Ionicons name="add" size={24} color="#fff" />
-                  </View>
-                  <Text style={styles.storyText}>Adaugă</Text>
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        )
-      
-      case 'post':
-        return (
-          <View style={styles.feedContainer}>
-            <Text style={styles.sectionTitle}>Feed</Text>
-            <View style={styles.emptyFeed}>
-              <Ionicons name="newspaper-outline" size={50} color="#ddd" />
-              <Text style={styles.emptyFeedText}>Nu există postări încă</Text>
-              <TouchableOpacity 
-                style={styles.createPostButton}
-                onPress={() => {
-                  router.push('/(home)/create-post');
-                }}
-              >
-                <Text style={styles.createPostText}>Creează prima postare</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )
-      
       case 'dbdata':
         return (
           <View style={styles.dbDataContainer}>
@@ -131,24 +88,25 @@ export default function HomePage() {
   const renderHeader = () => (
     <View style={styles.header}>
       <View style={styles.leftSection}>
-        <View style={styles.profileSection}>
+        <TouchableOpacity 
+          style={styles.profileSection} 
+          onPress={() => router.push('/(home)/profile')}
+        >
           <Image 
             source={{ uri: user?.imageUrl }} 
             style={styles.profileImage}
-            // Adăugăm un cache buster pentru a forța reîncărcarea imaginii
             key={`profile-image-${refreshing ? 'refreshing' : 'idle'}`}
           />
-          <View style={styles.welcomeText}>
-            <Text style={styles.greeting}>Bună,</Text>
-            <Text style={styles.username}>{user?.username || 'Utilizator'}</Text>
-          </View>
-        </View>
+          <Text style={styles.profileNameText}>
+            @{ (user?.username && user.username.length > 10 ? user.username.substring(0, 10) + '..' : user?.username) || 'Profil'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.logoWrapper}>
         <SvgLogo 
           width={100} 
-          height={100} 
+          height={100}
           color="#007AFF" 
           onPress={() => setDeveloperInfoVisible(true)}
         />
@@ -294,6 +252,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 30,
   },
   rightSection: {
     flex: 1,
@@ -302,26 +261,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   profileSection: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
+    marginLeft: 5,
   },
   profileImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 40,
-    marginRight: 10,
+    width: 80,
+    height: 80,
+    borderRadius: 50,
   },
-  welcomeText: {
-    flexDirection: 'column',
-  },
-  greeting: {
-    fontSize: 14,
-    color: '#666',
-  },
-  username: {
-    fontSize: 16,
-    fontWeight: 'bold',
+  profileNameText: {
+    fontSize: 12,
     color: '#333',
+    marginTop: 4,
+    fontWeight: 'bold',
   },
   buttonGroup: {
     flexDirection: 'row',
@@ -332,60 +285,6 @@ const styles = StyleSheet.create({
     padding: 8,
     marginLeft: 12,
     zIndex: 30,
-  },
-  storiesContainer: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    backgroundColor: '#fff',
-  },
-  storyItem: {
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  addStoryButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#007AFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 5,
-  },
-  storyText: {
-    fontSize: 12,
-    color: '#333',
-  },
-  feedContainer: {
-    padding: 15,
-    backgroundColor: '#fff',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#333',
-  },
-  emptyFeed: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  emptyFeedText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  createPostButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-  },
-  createPostText: {
-    color: '#fff',
-    fontWeight: 'bold',
   },
   dbDataContainer: {
     backgroundColor: '#f9f9f9',

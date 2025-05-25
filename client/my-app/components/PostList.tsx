@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, forwardRef, useImperativeHandl
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, Platform, Image, Dimensions, TouchableOpacity, Alert, SafeAreaView, Pressable, Modal } from 'react-native';
 import { supabase } from '../utils/supabase';
 import { Ionicons } from '@expo/vector-icons';
-import PostDetailModal from './PostDetailModal';
+import PostDetailModal from '../app/(home)/components/PostDetailModal';
 import { useUser } from '@clerk/clerk-expo';
 
 // Definim interfața pentru datele din tabelul post conform structurii din Supabase
@@ -122,6 +122,7 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const screenWidth = Dimensions.get('window').width;
+  const screenHeight = Dimensions.get('window').height;
 
   // State pentru dialog
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -218,7 +219,8 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
         try {
           // Pentru fiecare postare, obținem ultimele 2 comentarii
           const commentsMap: {[postId: number]: CommentData[]} = {};
-          
+          const commentUserIds = new Set<string>(); // Set pentru a colecta ID-urile utilizatorilor din comentarii
+
           for (const post of postData) {
             try {
               const { data: commentData, error: commentError } = await supabase
@@ -232,6 +234,8 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
                 console.error(`Eroare la obținerea comentariilor pentru postarea ${post.id_post}:`, commentError);
               } else if (commentData) {
                 commentsMap[post.id_post] = commentData as CommentData[];
+                // Adăugăm ID-urile utilizatorilor din comentarii la set
+                commentData.forEach(comment => commentUserIds.add(comment.id_user));
               }
             } catch (error) {
               console.error(`Eroare la procesarea comentariilor pentru postarea ${post.id_post}:`, error);
@@ -239,6 +243,33 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
           }
           
           setComments(commentsMap);
+
+          // Verificăm dacă trebuie să încărcăm date suplimentare pentru utilizatorii din comentarii
+          const existingUserIds = new Set(Object.keys(users));
+          const newCommentUserIds = Array.from(commentUserIds).filter(id => !existingUserIds.has(id));
+
+          if (newCommentUserIds.length > 0) {
+            console.log('Încărcare date suplimentare pentru utilizatorii din comentarii:', newCommentUserIds);
+            const { data: newUserData, error: newUserError } = await supabase
+              .from('user')
+              .select('*')
+              .in('id_user', newCommentUserIds);
+
+            if (newUserError) {
+              console.error('Eroare la obținerea utilizatorilor suplimentari din comentarii:', newUserError);
+            } else if (newUserData) {
+              const updatedUsersMap = { ...users }; // Copiem usersMap-ul existent
+              newUserData.forEach(user => {
+                updatedUsersMap[user.id_user] = {
+                  id: user.id_user,
+                  username: user.username || 'Utilizator necunoscut',
+                  avatar_url: user.profile_picture
+                };
+              });
+              setUsers(updatedUsersMap); // Actualizăm starea users
+            }
+          }
+
         } catch (error) {
           console.error('Eroare la procesarea comentariilor:', error);
         }
@@ -385,16 +416,6 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
     }));
   };
 
-  const handleComment = (postId: number) => {
-    console.log('Buton comment apăsat pentru postarea', postId);
-    
-    if (isNative) {
-      Alert.alert("Comentariu", "Funcția de adăugare comentariu va fi implementată în curând");
-    } else {
-      showDialog("Comentariu", "Funcția de adăugare comentariu va fi implementată în curând");
-    }
-  };
-
   const handleSend = (postId: number) => {
     console.log('Buton send apăsat pentru postarea', postId);
     
@@ -488,148 +509,174 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
           <FlatList
             data={posts}
             keyExtractor={(item) => item.id_post.toString()}
-            renderItem={({ item }) => (
-              <View style={styles.postContainer}>
-                {/* Header postare */}
-                <View style={styles.postHeader}>
-                  <View style={styles.userInfo}>
-                    <Image 
-                      source={{ 
-                        uri: users[item.id_user]?.avatar_url || 'https://via.placeholder.com/40'
-                      }} 
-                      style={styles.avatar} 
-                    />
-                    <View style={styles.userNameTime}>
-                      <Text style={styles.username}>{users[item.id_user]?.username || 'Utilizator'}</Text>
-                      <Text style={styles.timeAgo}>{formatTimeAgo(item.date_created)}</Text>
-                    </View>
-                  </View>
-                  <Pressable 
-                    style={({ pressed }) => [
-                      styles.optionsButton,
-                      pressed && styles.buttonPressed
-                    ]}
-                    android_ripple={{ color: '#ddd', borderless: true }}
-                    onPress={() => openOptionsMenu(item.id_post)}
-                  >
-                    <Ionicons name="ellipsis-horizontal" size={24} color="#666" />
-                  </Pressable>
-                </View>
+            renderItem={({ item }) => {
+              // Aplicăm stilul condiționat pentru web direct aici
+              let webStyles: import('react-native').ViewStyle | undefined;
+              if (Platform.OS === 'web') {
+                webStyles = {
+                  maxWidth: screenWidth * 0.7, 
+                  width: '100%', 
+                  alignSelf: 'center', 
+                  borderWidth: 1,
+                  borderColor: '#dbdbdb',
+                  borderRadius: 8,
+                  marginTop: 8,
+                  marginBottom: 8,
+                };
+              }
 
-                {/* Conținutul postării - clickabil */}
-                <TouchableOpacity 
-                  onPress={() => openPostDetail(item)}
-                  activeOpacity={0.9}
-                >
-                  <Text style={styles.contentText}>{item.content}</Text>
+              const postContainerStyles = [
+                styles.postContainer,
+                webStyles
+              ];
 
-                  {/* Imaginea postării - clickabilă */}
-                  {item.image_url && (
-                    <View style={styles.imageContainer}>
+              return (
+                <View style={postContainerStyles as import('react-native').StyleProp<import('react-native').ViewStyle>}>
+                  {/* Header postare */}
+                  <View style={styles.postHeader}>
+                    <View style={styles.userInfo}>
                       <Image 
-                        source={{ uri: item.image_url }} 
-                        style={styles.postImage} 
-                        resizeMode="cover"
+                        source={{ 
+                          uri: users[item.id_user]?.avatar_url || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png'
+                        }} 
+                        style={styles.avatar} 
                       />
-                    </View>
-                  )}
-                </TouchableOpacity>
-
-                {/* Butoane de acțiune */}
-                <View style={styles.actionButtons}>
-                  <View style={styles.leftButtons}>
-                    <Pressable 
-                      onPress={() => {
-                        handleLike(item.id_post);
-                      }}
-                      android_ripple={{ color: '#ddd', borderless: true }}
-                      style={({ pressed }) => [
-                        styles.actionButton,
-                        pressed && styles.buttonPressed
-                      ]}
-                    >
-                      <Ionicons 
-                        name={likedPosts[item.id_post] ? "heart" : "heart-outline"} 
-                        size={24} 
-                        color={likedPosts[item.id_post] ? "#007AFF" : "#333"} 
-                      />
-                    </Pressable>
-                    <Pressable 
-                      onPress={() => {
-                        openPostDetail(item);
-                      }}
-                      android_ripple={{ color: '#ddd', borderless: true }}
-                      style={({ pressed }) => [
-                        styles.actionButton,
-                        pressed && styles.buttonPressed
-                      ]}
-                    >
-                      <Ionicons name="chatbubble-outline" size={24} color="#333" />
-                    </Pressable>
-                  </View>
-                  <View style={styles.rightButtons}>
-                    <Pressable 
-                      onPress={() => {
-                        handleSend(item.id_post);
-                      }}
-                      android_ripple={{ color: '#ddd', borderless: true }}
-                      style={({ pressed }) => [
-                        styles.actionButton,
-                        pressed && styles.buttonPressed
-                      ]}
-                    >
-                      <Ionicons name="paper-plane-outline" size={24} color="#333" />
-                    </Pressable>
-                    <Pressable 
-                      onPress={() => {
-                        handleSave(item.id_post);
-                      }}
-                      android_ripple={{ color: '#ddd', borderless: true }}
-                      style={({ pressed }) => [
-                        styles.actionButton,
-                        pressed && styles.buttonPressed
-                      ]}
-                    >
-                      <Ionicons 
-                        name={savedPosts[item.id_post] ? "bookmark" : "bookmark-outline"} 
-                        size={24} 
-                        color={savedPosts[item.id_post] ? "#6495ED" : "#333"} 
-                      />
-                    </Pressable>
-                  </View>
-                </View>
-
-                {/* Comentarii */}
-                {comments[item.id_post] && comments[item.id_post].length > 0 ? (
-                  <View style={styles.commentsSection}>
-                    {comments[item.id_post].map(comment => (
-                      <View key={comment.id_comment} style={styles.commentItem}>
-                        <Text style={styles.commentUsername}>
-                          {users[comment.id_user]?.username || 'Utilizator'}:
-                        </Text>
-                        <Text style={styles.commentContent}>{comment.content}</Text>
+                      <View style={styles.userNameTime}>
+                        <Text style={styles.username}>{users[item.id_user]?.username || 'Utilizator'}</Text>
+                        <Text style={styles.timeAgo}>{formatTimeAgo(item.date_created)}</Text>
                       </View>
-                    ))}
-                    {/* Link pentru a vedea toate comentariile */}
-                    {comments[item.id_post] && comments[item.id_post].length === 2 && (
-                      <Pressable
-                        style={({ pressed }) => [
-                          styles.viewAllCommentsButton,
-                          pressed && styles.linkPressed
-                        ]}
-                        onPress={() => openPostDetail(item)}
-                      >
-                        <Text style={styles.viewAllComments}>Vezi toate comentariile...</Text>
-                      </Pressable>
-                    )}
+                    </View>
+                    <Pressable 
+                      style={({ pressed }) => [
+                        styles.optionsButton,
+                        pressed && styles.buttonPressed
+                      ]}
+                      android_ripple={{ color: '#ddd', borderless: true }}
+                      onPress={() => openOptionsMenu(item.id_post)}
+                    >
+                      <Ionicons name="ellipsis-horizontal" size={24} color="#666" />
+                    </Pressable>
                   </View>
-                ) : (
-                  <TouchableOpacity onPress={() => openPostDetail(item)}>
-                    <Text style={styles.noComments}>Nu există comentarii pentru această postare</Text>
+
+                  {/* Conținutul postării - clickabil */}
+                  <TouchableOpacity 
+                    onPress={() => openPostDetail(item)}
+                    activeOpacity={0.9}
+                  >
+                    <Text style={styles.contentText}>{item.content}</Text>
+
+                    {/* Imaginea postării - clickabilă */}
+                    {item.image_url && (
+                      <View style={styles.imageContainer}>
+                        <Image 
+                          source={{ uri: item.image_url }} 
+                          style={styles.postImage} 
+                          resizeMode={Platform.OS === 'web' ? 'contain' : 'cover'}
+                        />
+                      </View>
+                    )}
                   </TouchableOpacity>
-                )}
-              </View>
-            )}
+
+                  {/* Butoane de acțiune */}
+                  <View style={styles.actionButtons}>
+                    <View style={styles.leftButtons}>
+                      <Pressable 
+                        onPress={() => {
+                          handleLike(item.id_post);
+                        }}
+                        android_ripple={{ color: '#ddd', borderless: true }}
+                        style={({ pressed }) => [
+                          styles.actionButton,
+                          pressed && styles.buttonPressed
+                        ]}
+                      >
+                        <Ionicons 
+                          name={likedPosts[item.id_post] ? "heart" : "heart-outline"} 
+                          size={24} 
+                          color={likedPosts[item.id_post] ? "#007AFF" : "#333"} 
+                        />
+                      </Pressable>
+                      <Pressable 
+                        onPress={() => {
+                          openPostDetail(item);
+                        }}
+                        android_ripple={{ color: '#ddd', borderless: true }}
+                        style={({ pressed }) => [
+                          styles.actionButton,
+                          pressed && styles.buttonPressed
+                        ]}
+                      >
+                        <Ionicons name="chatbubble-outline" size={24} color="#333" />
+                      </Pressable>
+                    </View>
+                    <View style={styles.rightButtons}>
+                      <Pressable 
+                        onPress={() => {
+                          handleSend(item.id_post);
+                        }}
+                        android_ripple={{ color: '#ddd', borderless: true }}
+                        style={({ pressed }) => [
+                          styles.actionButton,
+                          pressed && styles.buttonPressed
+                        ]}
+                      >
+                        <Ionicons name="paper-plane-outline" size={24} color="#333" />
+                      </Pressable>
+                      <Pressable 
+                        onPress={() => {
+                          handleSave(item.id_post);
+                        }}
+                        android_ripple={{ color: '#ddd', borderless: true }}
+                        style={({ pressed }) => [
+                          styles.actionButton,
+                          pressed && styles.buttonPressed
+                        ]}
+                      >
+                        <Ionicons 
+                          name={savedPosts[item.id_post] ? "bookmark" : "bookmark-outline"} 
+                          size={24} 
+                          color={savedPosts[item.id_post] ? "#6495ED" : "#333"} 
+                        />
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  {/* Comentarii */}
+                  {comments[item.id_post] && comments[item.id_post].length > 0 ? (
+                    <View style={styles.commentsSection}>
+                      {comments[item.id_post].map(comment => {
+                        const username = users[comment.id_user]?.username;
+                        const displayName = (username && username.length > 20 ? username.substring(0, 20) + '..' : username) || 'Utilizator';
+                        return (
+                          <View key={comment.id_comment} style={styles.commentItem}>
+                            <Text style={styles.commentUsername}>
+                              {displayName}:
+                            </Text>
+                            <Text style={styles.commentContent}>{comment.content}</Text>
+                          </View>
+                        );
+                      })}
+                      {/* Link pentru a vedea toate comentariile */}
+                      {comments[item.id_post] && comments[item.id_post].length === 2 && (
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.viewAllCommentsButton,
+                            pressed && styles.linkPressed
+                          ]}
+                          onPress={() => openPostDetail(item)}
+                        >
+                          <Text style={styles.viewAllComments}>Vezi toate comentariile...</Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  ) : (
+                    <TouchableOpacity onPress={() => openPostDetail(item)}>
+                      <Text style={styles.noComments}>Nu există comentarii pentru această postare</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+            }}
             contentContainerStyle={styles.listContent}
           />
         )}
@@ -742,27 +789,9 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   postContainer: {
-    backgroundColor: 'white',
-    marginBottom: 16,
-    marginHorizontal: isNative ? 16 : 16,
-    borderRadius: isNative ? 12 : 12,
-    overflow: 'hidden',
-    ...(Platform.OS === 'web'
-      ? {
-          boxShadow: '0px 2px 8px rgba(0,0,0,0.1)',
-        }
-      : Platform.OS === 'android'
-        ? {
-            elevation: 3,
-          }
-        : Platform.OS === 'ios'
-          ? {
-              shadowColor: '#000',
-              shadowOpacity: 0.1,
-              shadowRadius: 8,
-              shadowOffset: { height: 2, width: 0 },
-            }
-          : {}),
+    backgroundColor: '#fff',
+    // marginBottom: 8, // Mutat în stilul condiționat pentru web sau păstrat pentru mobil
+    // Stilurile specifice web vor fi adăugate dinamic în renderItem
   },
   postHeader: {
     flexDirection: 'row',
@@ -823,7 +852,7 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingTop: 4,
     paddingBottom: 8,
-    width: '100%', // Extindem pentru a ocupa toată lățimea
+    width: '100%',
     marginHorizontal: 0,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
