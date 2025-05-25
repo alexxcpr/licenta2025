@@ -2,8 +2,8 @@
 // Acest fișier va fi actualizat automat de scriptul de dezvoltare
 
 export const BACKEND_CONFIG = {
-  BASE_URL: 'https://28ad-86-126-172-143.ngrok-free.app',
-  API_URL: 'https://28ad-86-126-172-143.ngrok-free.app/api'
+  BASE_URL: 'http://localhost:5000',
+  API_URL: 'http://localhost:5000/api'
 };
 
 // Funcție helper pentru a obține URL-ul complet al API-ului
