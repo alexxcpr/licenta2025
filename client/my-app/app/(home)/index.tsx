@@ -90,7 +90,11 @@ export default function HomePage() {
       <View style={styles.leftSection}>
         <TouchableOpacity 
           style={styles.profileSection} 
-          onPress={() => router.push('/(home)/profile')}
+          onPress={() => {
+            if (user?.id) {
+              router.push(`/(home)/profile/${user.id}` as any);
+            }
+          }}
         >
           <Image 
             source={{ uri: user?.imageUrl }} 
@@ -203,7 +207,11 @@ export default function HomePage() {
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.navItem}
-            onPress={() => router.push('/(home)/profile')}
+            onPress={() => {
+              if (user?.id) {
+                router.push(`/(profile)/${user.id}` as any);
+              }
+            }}
           >
             <Ionicons name="person-outline" size={24} color="#666" />
             <Text style={styles.navText}>Profil</Text>

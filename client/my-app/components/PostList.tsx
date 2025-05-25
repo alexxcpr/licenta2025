@@ -4,6 +4,8 @@ import { supabase } from '../utils/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import PostDetailModal from '../app/(home)/components/PostDetailModal';
 import { useUser } from '@clerk/clerk-expo';
+import { useRouter } from 'expo-router';
+import { getApiUrl } from '../config/backend';
 
 // Definim interfața pentru datele din tabelul post conform structurii din Supabase
 interface PostData {
@@ -116,6 +118,7 @@ const isNative = isIOS || isAndroid;
 
 const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
   const { user } = useUser();
+  const router = useRouter();
   const [posts, setPosts] = useState<PostData[]>([]);
   const [comments, setComments] = useState<{[postId: number]: CommentData[]}>({});
   const [users, setUsers] = useState<{[userId: string]: UserData}>({});
@@ -488,6 +491,11 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
     setSelectedPostUser(null);
   };
 
+  // Funcție pentru navigarea către profilul unui utilizator
+  const navigateToProfile = (userId: string) => {
+    router.push(`/(home)/profile/${userId}` as any);
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -534,7 +542,11 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
                 <View style={postContainerStyles as import('react-native').StyleProp<import('react-native').ViewStyle>}>
                   {/* Header postare */}
                   <View style={styles.postHeader}>
-                    <View style={styles.userInfo}>
+                    <TouchableOpacity 
+                      style={styles.userInfo}
+                      onPress={() => navigateToProfile(item.id_user)}
+                      activeOpacity={0.7}
+                    >
                       <Image 
                         source={{ 
                           uri: users[item.id_user]?.avatar_url || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png'
@@ -545,7 +557,7 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
                         <Text style={styles.username}>{users[item.id_user]?.username || 'Utilizator'}</Text>
                         <Text style={styles.timeAgo}>{formatTimeAgo(item.date_created)}</Text>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                     <Pressable 
                       style={({ pressed }) => [
                         styles.optionsButton,
@@ -649,9 +661,11 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
                         const displayName = (username && username.length > 20 ? username.substring(0, 20) + '..' : username) || 'Utilizator';
                         return (
                           <View key={comment.id_comment} style={styles.commentItem}>
-                            <Text style={styles.commentUsername}>
-                              {displayName}:
-                            </Text>
+                            <TouchableOpacity onPress={() => navigateToProfile(comment.id_user)}>
+                              <Text style={styles.commentUsername}>
+                                {displayName}:
+                              </Text>
+                            </TouchableOpacity>
                             <Text style={styles.commentContent}>{comment.content}</Text>
                           </View>
                         );

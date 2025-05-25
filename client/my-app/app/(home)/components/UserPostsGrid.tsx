@@ -15,11 +15,12 @@ import { useRouter } from 'expo-router'; // Necesar pentru butonul "Adaugă prim
 interface UserPostsGridProps {
   posts: Post[];
   onPostPress?: (post: Post) => void; // Callback pentru apăsarea unei postări
+  isOwnProfile?: boolean; // Adaug proprietatea pentru a verifica dacă e profilul utilizatorului curent
 }
 
 const windowWidth = Dimensions.get('window').width;
 
-export default function UserPostsGrid({ posts, onPostPress }: UserPostsGridProps) {
+export default function UserPostsGrid({ posts, onPostPress, isOwnProfile = false }: UserPostsGridProps) {
   const router = useRouter();
 
   const renderPostItem = ({ item }: { item: Post }) => (
@@ -74,13 +75,17 @@ export default function UserPostsGrid({ posts, onPostPress }: UserPostsGridProps
       ) : (
         <View style={styles.emptyPostsContainer}>
           <Ionicons name="images-outline" size={50} color="#ddd" />
-          <Text style={styles.emptyPostsText}>Nu există postări încă</Text>
-          <TouchableOpacity 
-            style={styles.createPostButton}
-            onPress={() => router.push('/(home)/create-post')} // Navigare către crearea postării
-          >
-            <Text style={styles.createPostText}>Adaugă prima postare</Text>
-          </TouchableOpacity>
+          <Text style={styles.emptyPostsText}>
+            {isOwnProfile ? 'Nu ai încă nicio postare' : 'Acest utilizator nu are încă postări'}
+          </Text>
+          {isOwnProfile && (
+            <TouchableOpacity 
+              style={styles.createPostButton}
+              onPress={() => router.push('/(home)/create-post')} // Navigare către crearea postării
+            >
+              <Text style={styles.createPostText}>Adaugă prima postare</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </View>
