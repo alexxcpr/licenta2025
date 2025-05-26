@@ -4,12 +4,12 @@
 Dezvoltarea unei platforme de rețea socială dedicată profesioniștilor dintr-un anumit domeniu, cu funcționalități de networking și colaborare.
 
 ## 💻 Tehnologii folosite
-    - Expo V53
+- Expo V53
 - React Native
-    - TypeScript
+- TypeScript
 - Clerk (autentificare)
 - Supabase (bază de date)
-    - Express (backend)
+- Express (backend)
 - Server backend cloud: [Render](https://licenta2025.onrender.com/)
 
 ## ✅ Funcționalități implementate

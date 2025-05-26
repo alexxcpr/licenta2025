@@ -12,12 +12,12 @@
 - swipe gesture pentru a reveni la pagina anterioara din pagina de profil (de la stanga la dreapta)
 - modalul de editare a profilului facut pe toata pagina
 - animatii pentru swipe gestures
-- 
+
 *IMBUNATATIRI*
 - tranformat buton optiuni postare (3 puncte "...") in dialog din alerta + estetizare (inca nu are functionalitate)
 - adaugat buton pentru stergere postare (doar daca userul curent este autorul postarii)
 - butonul de sign out primeste props si se deschide modalul de confirmare pentru a se loga din cont
-- 
+
 *BUG FIXES*
 - nimic
 
