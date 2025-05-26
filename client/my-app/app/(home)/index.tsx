@@ -92,7 +92,7 @@ export default function HomePage() {
           style={styles.profileSection} 
           onPress={() => {
             if (user?.id) {
-              router.push(`/(home)/profile/${user.id}` as any);
+              router.push(`/(profile)/${user.id}` as any);
             }
           }}
         >

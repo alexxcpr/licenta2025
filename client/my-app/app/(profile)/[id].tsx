@@ -226,10 +226,25 @@ export default function DynamicProfileScreen() {
           <EditProfileModal
             visible={editModalVisible}
             onClose={() => setEditModalVisible(false)}
-            user={null}
+            user={currentUser}
             profile={profileData.user}
             loadProfile={loadProfile}
-            requestUsernameChangeVerification={async () => false}
+            requestUsernameChangeVerification={async (newUsername: string) => {
+              console.log('Solicitare schimbare username în [id].tsx pentru:', newUsername);
+              if (!currentUser) return false;
+              try {
+                // Aici ar trebui să fie logica reală de actualizare a username-ului în Clerk
+                // De exemplu, currentUser.update({ username: newUsername });
+                // Momentan, doar simulăm și returnăm true sau false
+                // IMPORTANT: Verifică documentația Clerk pentru metoda corectă și gestionarea erorilor
+                await currentUser.update({ username: newUsername }); 
+                return true; 
+              } catch (error) {
+                console.error('Eroare la actualizarea username-ului în Clerk:', error);
+                Alert.alert('Eroare', 'Nu s-a putut actualiza numele de utilizator.');
+                return false;
+              }
+            }}
           />
         )}
 

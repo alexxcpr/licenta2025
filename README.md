@@ -8,6 +8,7 @@ Dezvoltarea unei platforme de rețea socială dedicată profesioniștilor dintr-
     - Clerk (auth)
     - Supabase (db)
     - Express (backend)
+    - Server backend cloud: Render: link: https://licenta2025.onrender.com/
 
  ## TODO:
  ✅ TODO: Definește acțiunea la apăsarea unei postări (Ce se intampla cand se apasa pe o postare)

@@ -19,6 +19,8 @@
 - pe web nu se putea vedea profilul userilor (trebuia header custom pentru request catre ngrok)
 - se deschide pagina userului daca se apasa pe numele/poza de profil a userului din comentarii/header-ul din homepage/imaginea postarii
 - din profilul unui utilizator, cand se apasa pe sageata de back, daca nu era o pagina anterioara dadea eroare, acum se deschide home page
+- daca eram conectat cu profilul X si intram pe profilul Y care nu avea postari, imi aparea si mie butonul de Creeaza o postare noua
+  
 ## alpha 01.0.1
 *IMPLEMENTARI NOI*
 - implementare comentarii la postari

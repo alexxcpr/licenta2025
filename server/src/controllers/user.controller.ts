@@ -4,8 +4,18 @@ import { createClient } from '@supabase/supabase-js';
 // import User from '../models/user.model';
 
 // Configurarea Supabase
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_ANON_KEY || '';
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY; // Sau SUPABASE_SERVICE_KEY dacă folosești cheia de serviciu
+
+if (!supabaseUrl) {
+  console.error('FATAL ERROR: SUPABASE_URL is not defined in environment variables.');
+  process.exit(1); // Oprește procesul dacă variabila esențială lipsește
+}
+if (!supabaseKey) {
+  console.error('FATAL ERROR: SUPABASE_ANON_KEY (sau SUPABASE_SERVICE_KEY) is not defined in environment variables.');
+  process.exit(1); // Oprește procesul dacă variabila esențială lipsește
+}
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 /**

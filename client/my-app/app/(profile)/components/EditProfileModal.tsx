@@ -73,7 +73,13 @@ export default function EditProfileModal({
   };
 
   const handleSaveProfile = async () => {
-    if (!user) return;
+    console.log('handleSaveProfile called');
+    console.log('User object:', JSON.stringify(user, null, 2));
+
+    if (!user) {
+      console.log('User is null or undefined, exiting handleSaveProfile.');
+      return;
+    }
     
     setSavingProfile(true);
     

@@ -493,7 +493,7 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
 
   // Funcție pentru navigarea către profilul unui utilizator
   const navigateToProfile = (userId: string) => {
-    router.push(`/(home)/profile/${userId}` as any);
+    router.push(`/(profile)/${userId}` as any);
   };
 
   return (
