@@ -1,79 +1,90 @@
-# licenta2025 - ExpertLink
-Dezvoltarea unei platforme de rețea socială dedicată profesioniștilor dintr-un anumit domeniu, cu funcționalități de networking și colaborare
+# ExpertLink 🌐
 
-💻Tehnologii folosite:
-    - Expo V53
-    - React native
-    - TypeScript
-    - Clerk (auth)
-    - Supabase (db)
-    - Express (backend)
-    - Server backend cloud: Render: link: https://licenta2025.onrender.com/
+## Descriere
+Dezvoltarea unei platforme de rețea socială dedicată profesioniștilor dintr-un anumit domeniu, cu funcționalități de networking și colaborare.
 
- ## TODO:
- ✅ TODO: Definește acțiunea la apăsarea unei postări (Ce se intampla cand se apasa pe o postare)
- - TODO: Adaugă când implementăm partajarea (Ce se intampla cand se apasa pe distribuie cont)
- - TODO: Implement settings navigation (De facut ruta catre setari + pagina setari)
- ### DE IMPLEMENTAT (NOU)
- #### 📝pagina profil 
-✅ postarile userului
-✅ numar postari
-- numar conexiuni:
-  - trebuie tabela noua + relatii in supabase
-  - trebuie adaugata in ErDiagram.md
-✅ posibilitate schimbare poza profil
-✅ posibilitate schimbare nume
-✅ posibilitate schimbare descriere cont
-- posibilitate incarcare CV: incarcare pdf
-- 
-#### 📝pagina setari
+## 💻 Tehnologii folosite
+- Expo V53
+- React Native
+- TypeScript
+- Clerk (autentificare)
+- Supabase (bază de date)
+- Express (backend)
+- Server backend cloud: [Render](https://licenta2025.onrender.com/)
 
+## ✅ Funcționalități implementate
+- Definirea acțiunii la apăsarea unei postări
+- Afișarea postărilor utilizatorului în pagina de profil
+- Afișarea numărului de postări
+- Posibilitatea de schimbare a pozei de profil
+- Posibilitatea de schimbare a numelui
+- Posibilitatea de schimbare a descrierii contului
 
-#### 📝chat in timp real:
-- chat individual
-- chat de grup
-- mesaje in timp real
-- notificari
+## 📋 Funcționalități în curs de implementare
 
-#### 📝notificari -> cand se primesc notificari:
-- se primeste un mesaj
-- se primeste un like
-- se primeste un comment
-- se posteaza in grup
-- e invitat in grup
-- e acceptat in grup
-- i s-a dat un rol nou (general)
-- i s-a dat un rol nou (grup)
-- i s-a scos un rol (general/grup)
+### 📝 Pagina de profil
+- Număr conexiuni:
+  - Necesită tabelă nouă + relații în Supabase
+  - Trebuie adăugată în ErDiagram.md
+- Posibilitatea de încărcare CV (format PDF)
 
-#### 📝pagina exploreaza
-- un container (2 randuri) cu persoane noi -> apar cele cu cele mai multe conexiuni comune.. ar trebui db graph? => cypher?
-- apar grupuri existente -> ordine:
-  1)cele care au cei mai multi membrii facand parte din conexiunile userului
-  2)cele care au cei mai multi membrii ca numar
-  3)cele care au cele mai multe postari
+### 📝 Pagina setări
+- În curs de dezvoltare
 
-#### 📝grupuri
-- creare grup
-- stergere grup
-- trimitere invititatie
-- join group
-- leave group
-- lista cu membrii si group roles
-- pagina pentru grup cu postarile grupului
-- group chat
+### 📝 Chat în timp real
+- Chat individual
+- Chat de grup
+- Mesaje în timp real
+- Notificări
 
-#### 📝dashboard admin:
-- postari raportate
-- conturi raportate
-- statistici activitate
+### 📝 Sistem de notificări
+Utilizatorul primește notificări când:
+- Primește un mesaj
+- Primește un like
+- Primește un comentariu
+- Cineva postează în grup
+- Este invitat în grup
+- Este acceptat în grup
+- Primește un rol nou (general)
+- Primește un rol nou (grup)
+- I se retrage un rol (general/grup)
 
-#### 📝imagine in docker
-#### 📝containerizare kubernetes - imi trebuie?nu am server dar e bun pentru cunostinte
+### 📝 Pagina "Explorează"
+- Container (2 rânduri) cu persoane noi
+  - Vor apărea cele cu cele mai multe conexiuni comune
+  - Posibilă implementare de DB graph cu Cypher
+- Grupuri existente, ordonate după:
+  1. Numărul de membri din conexiunile utilizatorului
+  2. Numărul total de membri
+  3. Numărul de postări
 
-### DE IMBUNATATIT
-- cand se sterge o postare sa se stearga si imaginea din bucket
-✅ de scos partea de story-uri, se renunta la idee, pe linkedin nu sunt story-uri
-✅ de scos partea de feed de pe home page, exista deja postari acasa
-- cand se creeaza o postare, sa se aleaga partea din imagine care sa apara si in postare, rezolutia imaginii din postare sa coincida cu ce s-a ales
-- pe ios sa se afiseze dialog ca pe web, nu alerte
+### 📝 Funcționalități pentru grupuri
+- Creare grup
+- Ștergere grup
+- Trimitere invitații
+- Alăturare la grup
+- Părăsire grup
+- Listă cu membri și roluri
+- Pagină pentru grup cu postările specifice
+- Chat de grup
+
+### 📝 Dashboard admin
+- Postări raportate
+- Conturi raportate
+- Statistici activitate
+
+### 📝 Containerizare
+- Imagine în Docker
+- Containerizare Kubernetes (opțional)
+
+## 🛠️ De îmbunătățit
+- Ștergerea imaginii din bucket când se șterge o postare
+- Selectarea părții din imagine care să apară în postare
+- Adaptarea dialogurilor pe iOS pentru a se afișa ca pe web, nu ca alerte
+
+## 📌 În așteptare
+- Implementarea funcționalității de distribuire a contului
+
+## ✅ Modificări recente
+- Eliminarea secțiunii de story-uri (nu există pe LinkedIn)
+- Eliminarea feed-ului redundant de pe pagina principală
