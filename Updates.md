@@ -6,15 +6,20 @@
 *IMPLEMENTARI NOI*
 - adaugare roluri pentru utilizatori (Moderator, Admin)
 - functionalitate pentru butonul de setari (dashboard moderare, dashboard admin, delogheaza-te) atat in home page cat si in profile page
-- swipe gesture pentru a inchide meniul de setari.
-- swipe gesture pentru a inchide modalul de editare a profilului.
-- swipe gesture pentru a reveni la pagina anterioara din pagina de profil
+- dashboard moderare se afiseaza doar daca userul are rolul de "Moderator"
+- dashboard admin se afiseaza doar daca userul are rolul de "Administrator"
+- swipe gesture pentru a inchide meniul de setari. (de la stanga la dreapta)
+- swipe gesture pentru a reveni la pagina anterioara din pagina de profil (de la stanga la dreapta)
+- modalul de editare a profilului facut pe toata pagina
 - animatii pentru swipe gestures
+- 
 *IMBUNATATIRI*
-- tranformat buton optiuni postare in dialog din alerta + estetizare
+- tranformat buton optiuni postare (3 puncte "...") in dialog din alerta + estetizare (inca nu are functionalitate)
+- adaugat buton pentru stergere postare (doar daca userul curent este autorul postarii)
 - butonul de sign out primeste props si se deschide modalul de confirmare pentru a se loga din cont
+- 
 *BUG FIXES*
-
+- nimic
 
 ## alpha 01.0.2
 
