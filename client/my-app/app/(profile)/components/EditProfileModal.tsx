@@ -12,13 +12,17 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Dimensions
+  Dimensions,
+  Pressable
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { UserProfile } from '../../../utils/types'; // Calea corectată pentru tipuri
+import { UserProfile } from '../../../utils/types';
 import { UserResource } from '@clerk/types'; 
-import { supabase } from '../../../utils/supabase'; // Calea pentru supabase este corectă
+import { supabase } from '../../../utils/supabase';
+
+const SCREEN_HEIGHT = Dimensions.get('window').height;
+const IS_IOS = Platform.OS === 'ios';
 
 interface EditProfileModalProps {
   visible: boolean;
@@ -42,15 +46,19 @@ export default function EditProfileModal({
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
 
+  // Încărcăm datele profilului când devine vizibil modalul
   useEffect(() => {
-    if (visible && profile) {
-      setEditUsername(profile.username || user?.username || '');
-      setEditBio(profile.bio || '');
-      setSelectedImage(profile.profile_picture || user?.imageUrl || null);
-    } else if (visible && user) {
-      setEditUsername(user.username || '');
-      setEditBio('');
-      setSelectedImage(user.imageUrl || null);
+    if (visible) {
+      // Setăm datele
+      if (profile) {
+        setEditUsername(profile.username || user?.username || '');
+        setEditBio(profile.bio || '');
+        setSelectedImage(profile.profile_picture || user?.imageUrl || null);
+      } else if (user) {
+        setEditUsername(user.username || '');
+        setEditBio('');
+        setSelectedImage(user.imageUrl || null);
+      }
     }
   }, [visible, profile, user]);
 
@@ -73,9 +81,6 @@ export default function EditProfileModal({
   };
 
   const handleSaveProfile = async () => {
-    console.log('handleSaveProfile called');
-    console.log('User object:', JSON.stringify(user, null, 2));
-
     if (!user) {
       console.log('User is null or undefined, exiting handleSaveProfile.');
       return;
@@ -84,7 +89,7 @@ export default function EditProfileModal({
     setSavingProfile(true);
     
     try {
-      // Verificare conexiune (poate fi opțională aici dacă se face în funcția principală)
+      // Verificare conexiune
       const { error: testError } = await supabase
         .from('user')
         .select('id_user')
@@ -123,7 +128,6 @@ export default function EditProfileModal({
         } catch (imageError) {
           console.error('Eroare la actualizarea imaginii de profil în Clerk:', imageError);
           Alert.alert('Eroare la încărcarea imaginii', 'Nu s-a putut actualiza imaginea de profil. Încercați din nou mai târziu.');
-          // Considerăm dacă vrem să oprim salvarea aici sau continuăm cu restul
         }
       }
       
@@ -131,7 +135,7 @@ export default function EditProfileModal({
       const { error: updateError } = await supabase
         .from('user')
         .update({
-          username: editUsername, // Username-ul din Supabase se va actualiza direct
+          username: editUsername,
           bio: editBio,
           profile_picture: clerkImageUrl, 
           date_updated: new Date().toISOString()
@@ -144,74 +148,82 @@ export default function EditProfileModal({
         setSavingProfile(false);
         return;
       }
-      console.log('Profilul a fost actualizat în Supabase. Imagine:', clerkImageUrl);
       
-      // 3. Actualizare username în Clerk (dacă s-a schimbat și e diferit de cel curent)
-      let usernameUpdatedInClerk = true; // Presupunem că e ok dacă nu trebuie schimbat
+      // 3. Actualizare username în Clerk (dacă s-a schimbat)
+      let usernameUpdatedInClerk = true;
       if (editUsername !== user.username) {
-        console.log('Încercare actualizare username în Clerk (din modal):', editUsername);
+        console.log('Încercare actualizare username în Clerk:', editUsername);
         usernameUpdatedInClerk = await requestUsernameChangeVerification(editUsername);
       }
       
-      await loadProfile(); // Reîncarcă datele în ecranul principal
+      await loadProfile(); // Reîncarcă datele
       onClose(); // Închide modalul
       
       if (editUsername !== user.username && !usernameUpdatedInClerk) {
         Alert.alert(
           'Actualizare parțială', 
-          'Profilul a fost actualizat, dar schimbarea numelui de utilizator necesită verificare sau a eșuat. Verificați email-ul sau încercați din nou.'
+          'Profilul a fost actualizat, dar schimbarea numelui de utilizator necesită verificare sau a eșuat.'
         );
       } else {
         Alert.alert('Succes', 'Profilul a fost actualizat cu succes!');
       }
 
     } catch (error) {
-      console.error('Eroare generală la salvarea profilului (din modal):', error);
+      console.error('Eroare generală la salvarea profilului:', error);
       Alert.alert('Eroare', 'A apărut o eroare la salvarea profilului. Încercați din nou.');
     } finally {
       setSavingProfile(false);
     }
   };
 
+  // Nu afișăm nimic dacă modalul nu este vizibil
+  if (!visible) return null;
 
   return (
     <Modal
-      animationType="slide"
-      transparent={true}
       visible={visible}
+      transparent={true}
+      animationType="slide"
       onRequestClose={onClose}
+      presentationStyle="pageSheet"
     >
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.centeredView}
-      >
-        <View style={styles.modalView}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity 
-              onPress={onClose}
-              style={styles.closeButton}
-            >
-              <Ionicons name="close-outline" size={28} color="#333" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Editează profilul</Text>
-            <TouchableOpacity 
-              onPress={handleSaveProfile}
-              style={styles.saveButton}
-              disabled={savingProfile}
-            >
-              {savingProfile ? (
-                <ActivityIndicator size="small" color="#007AFF" />
-              ) : (
-                <Text style={styles.saveButtonText}>Salvează</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.closeButton}
+            onPress={onClose}
+          >
+            <Ionicons name="close-outline" size={28} color="#333" />
+          </TouchableOpacity>
+          
+          <Text style={styles.title}>Editează profilul</Text>
+          
+          <TouchableOpacity 
+            style={styles.saveButton}
+            onPress={handleSaveProfile}
+            disabled={savingProfile}
+          >
+            {savingProfile ? (
+              <ActivityIndicator size="small" color="#007AFF" />
+            ) : (
+              <Text style={styles.saveText}>Salvează</Text>
+            )}
+          </TouchableOpacity>
+        </View>
 
-          <ScrollView style={styles.modalContent}>
+        <KeyboardAvoidingView 
+          behavior={IS_IOS ? "padding" : "height"}
+          style={styles.content}
+        >
+          <ScrollView style={styles.scrollContent}>
             <View style={styles.imageSection}>
               <Image 
-                source={{ uri: selectedImage || user?.imageUrl || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png' }} 
-                style={styles.editProfileImage} 
+                source={{ 
+                  uri: selectedImage || 
+                       user?.imageUrl || 
+                       'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png' 
+                }} 
+                style={styles.profileImage} 
               />
               <TouchableOpacity 
                 style={styles.changeImageButton}
@@ -221,8 +233,8 @@ export default function EditProfileModal({
               </TouchableOpacity>
             </View>
 
-            <View style={styles.inputSection}>
-              <Text style={styles.inputLabel}>Nume utilizator</Text>
+            <View style={styles.formSection}>
+              <Text style={styles.label}>Nume utilizator</Text>
               <TextInput
                 style={styles.input}
                 value={editUsername}
@@ -231,7 +243,7 @@ export default function EditProfileModal({
                 maxLength={50}
               />
               
-              <Text style={styles.inputLabel}>Despre mine</Text>
+              <Text style={styles.label}>Despre mine</Text>
               <TextInput
                 style={[styles.input, styles.bioInput]}
                 value={editBio}
@@ -243,34 +255,18 @@ export default function EditProfileModal({
               />
             </View>
           </ScrollView>
-        </View>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  centeredView: {
+  container: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  modalView: {
     backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    marginTop: 'auto',
-    maxHeight: Dimensions.get('window').height * 0.9, // Limitat la 90% din înălțime
-    width: '100%',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -3,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
   },
-  modalHeader: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -278,40 +274,43 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f0f0f0',
     paddingHorizontal: 16,
     paddingVertical: 14,
+    paddingTop: IS_IOS ? 50 : 14,
   },
-  modalTitle: {
+  closeButton: {
+    padding: 8,
+  },
+  title: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-  },
-  closeButton: {
-    padding: 4,
   },
   saveButton: {
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
-  saveButtonText: {
+  saveText: {
     color: '#007AFF',
     fontWeight: 'bold',
     fontSize: 16,
   },
-  modalContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
+  content: {
+    flex: 1,
+  },
+  scrollContent: {
+    flex: 1,
   },
   imageSection: {
     alignItems: 'center',
-    marginBottom: 24,
+    paddingVertical: 24,
   },
-  editProfileImage: {
+  profileImage: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    marginBottom: 12,
+    marginBottom: 16,
     borderWidth: 2,
     borderColor: '#f0f0f0',
-    backgroundColor: '#e0e0e0', // Placeholder color
+    backgroundColor: '#e0e0e0',
   },
   changeImageButton: {
     backgroundColor: '#f0f0f0',
@@ -323,10 +322,11 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontWeight: '600',
   },
-  inputSection: {
-    marginBottom: 20,
+  formSection: {
+    paddingHorizontal: 16,
+    paddingBottom: 40,
   },
-  inputLabel: {
+  label: {
     fontSize: 14,
     fontWeight: '600',
     color: '#333',
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     fontSize: 16,
-    marginBottom: 16,
+    marginBottom: 20,
     color: '#000',
   },
   bioInput: {

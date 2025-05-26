@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -11,9 +11,10 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Animated
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useUser } from '@clerk/clerk-expo';
 import EditProfileModal from './components/EditProfileModal';
 import ProfileHeader from './components/ProfileHeader';
@@ -21,6 +22,13 @@ import UserPostsGrid from '../(home)/components/UserPostsGrid';
 import PostDetailModal from '../(home)/components/PostDetailModal';
 import { Post, UserProfile } from '../../utils/types';
 import { getApiUrl } from '../../config/backend';
+import AppSettingsMenu from '../ui/AppSettingsMenu';
+import { PanGestureHandler, GestureHandlerRootView } from 'react-native-gesture-handler';
+
+// Constante și praguri pentru gesturi
+const SWIPE_THRESHOLD = 80;
+const IS_WEB = Platform.OS === 'web';
+const IS_IOS = Platform.OS === 'ios';
 
 interface ProfileData {
   user: UserProfile;
@@ -31,6 +39,7 @@ interface ProfileData {
 
 export default function DynamicProfileScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user: currentUser } = useUser();
   
@@ -39,42 +48,53 @@ export default function DynamicProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
 
+  // State pentru meniul de setări
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+
   // State pentru modal-ul de detalii postare
   const [postDetailVisible, setPostDetailVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [selectedPostUser, setSelectedPostUser] = useState<any>(null);
 
+  // Referințe pentru animații - utilizăm referințe separate pentru animațiile JS și Native
+  const translateX = useRef(new Animated.Value(0)).current;
+  const scaleX = useRef(new Animated.Value(1)).current;
+  
+  // Culoare de fundal separată - Nu putem utiliza useNativeDriver pentru backgroundColor
+  const [bgColor, setBgColor] = useState('#ffffff');
+
   // Verificăm explicit dacă ID-urile sunt string-uri și le comparăm corect
   const isOwnProfile = useMemo(() => {
-    // Verifică dacă ambele ID-uri există și sunt de tip string
     if (!currentUser?.id || !id) return false;
-    // Compară ID-urile exact
     const currentUserId = String(currentUser.id);
     const profileId = String(id);
-    console.log('Comparare ID-uri:', { 
-      currentUserId, 
-      profileId, 
-      areEqual: currentUserId === profileId 
-    });
     return currentUserId === profileId;
   }, [currentUser?.id, id]);
+
+  // Efect pentru resetarea animațiilor la navigare
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      translateX.setValue(0);
+      scaleX.setValue(1);
+      setBgColor('#ffffff');
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const loadProfile = async () => {
     if (!id) return;
 
     try {
       setLoading(true);
-      // Asigură că id-ul este trimis corect către backend
       const cleanId = String(id).trim();      
-      // Adăugăm headerul necesar pentru a evita avertizarea ngrok
       const response = await fetch(getApiUrl(`/users/profile/${cleanId}`), {
         headers: {
-          'ngrok-skip-browser-warning': 'true', // Acest header permite evitarea paginii de avertizare ngrok
+          'ngrok-skip-browser-warning': 'true',
           'Content-Type': 'application/json',
         }
       });
       
-      // Verificăm dacă răspunsul e valid înainte de a încerca să-l parsăm ca JSON
       if (!response.ok) {
         console.error(`Eroare HTTP: ${response.status} - ${response.statusText}`);
         const text = await response.text();
@@ -101,7 +121,6 @@ export default function DynamicProfileScreen() {
 
   useEffect(() => {
     loadProfile();
-    console.log('useEffect[id]: currentUser.id:', currentUser?.id, 'profile id:', id, 'isOwnProfile:', isOwnProfile);
   }, [id]);
 
   const handleRefresh = async () => {
@@ -111,6 +130,10 @@ export default function DynamicProfileScreen() {
 
   const openEditModal = () => {
     setEditModalVisible(true);
+  };
+
+  const toggleProfileMenu = () => {
+    setIsProfileMenuOpen(!isProfileMenuOpen);
   };
 
   const openPostDetail = (post: Post) => {
@@ -141,6 +164,133 @@ export default function DynamicProfileScreen() {
     setSelectedPostUser(null);
   };
 
+  // Navigare înapoi cu animație
+  const goBack = () => {
+    // Asigurăm că utilizăm separate animația pentru culoare (JS) de cele native
+    // iOS are probleme când amestecăm useNativeDriver true/false pe același nod
+    setBgColor('#f2f2f2');
+    
+    // Animațiile native separat
+    Animated.parallel([
+      Animated.timing(translateX, {
+        toValue: 500,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleX, {
+        toValue: 0.9,
+        duration: 300,
+        useNativeDriver: true,
+      })
+    ]).start(() => {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.push('/(home)' as any);
+      }
+    });
+  };
+
+  // Funcție pentru gestionarea gestului de swipe pe web
+  const handleWebSwipe = (e: any) => {
+    if (!IS_WEB) return;
+    
+    const touchStartX = (e.touches?.[0]?.clientX || e.nativeEvent?.pageX || 0);
+    
+    const handleTouchMove = (moveEvent: any) => {
+      const currentX = moveEvent.touches?.[0]?.clientX || moveEvent.nativeEvent?.pageX || 0;
+      const deltaX = currentX - touchStartX;
+      
+      if (deltaX > 0) {
+        // Actualizăm transformările (native)
+        translateX.setValue(deltaX);
+        const scale = Math.max(0.9, 1 - (deltaX / 1000));
+        scaleX.setValue(scale);
+        
+        // Culoarea de fundal (non-nativă) - gestionată separat
+        if (deltaX > 30) {
+          setBgColor('#f2f2f2');
+        }
+      }
+    };
+    
+    const handleTouchEnd = (endEvent: any) => {
+      const endX = endEvent.changedTouches?.[0]?.clientX || endEvent.nativeEvent?.pageX || 0;
+      const deltaX = endX - touchStartX;
+      
+      if (deltaX > SWIPE_THRESHOLD) {
+        goBack();
+      } else {
+        // Anulăm animația
+        Animated.parallel([
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 5,
+          }),
+          Animated.spring(scaleX, {
+            toValue: 1,
+            useNativeDriver: true,
+            bounciness: 5,
+          })
+        ]).start();
+        
+        // Resetăm culoarea separat
+        setBgColor('#ffffff');
+      }
+      
+      // Curățăm event listeners
+      if (IS_WEB && typeof document !== 'undefined') {
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
+      }
+    };
+    
+    // Adăugăm event listeners
+    if (IS_WEB && typeof document !== 'undefined') {
+      document.addEventListener('touchmove', handleTouchMove);
+      document.addEventListener('touchend', handleTouchEnd);
+    }
+  };
+
+  // Gestionarea gestului de swipe pentru dispozitive mobile
+  const onGestureEvent = ({ nativeEvent }: { nativeEvent: any }) => {
+    if (nativeEvent.translationX > 0) {
+      // Animații native
+      translateX.setValue(nativeEvent.translationX);
+      const scale = Math.max(0.9, 1 - (nativeEvent.translationX / 1000));
+      scaleX.setValue(scale);
+      
+      // Culoarea de fundal non-nativă - actualizată separat
+      if (nativeEvent.translationX > 30) {
+        setBgColor('#f2f2f2');
+      }
+    }
+  };
+
+  const onGestureEnd = ({ nativeEvent }: { nativeEvent: any }) => {
+    if (nativeEvent.translationX > SWIPE_THRESHOLD) {
+      goBack();
+    } else {
+      // Animațiile native separat
+      Animated.parallel([
+        Animated.spring(translateX, {
+          toValue: 0,
+          useNativeDriver: true,
+          bounciness: 5,
+        }),
+        Animated.spring(scaleX, {
+          toValue: 1,
+          useNativeDriver: true,
+          bounciness: 5,
+        })
+      ]).start();
+      
+      // Resetăm culoarea separat
+      setBgColor('#ffffff');
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
@@ -165,156 +315,244 @@ export default function DynamicProfileScreen() {
   }
 
   return (
-    <>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      <SafeAreaView style={styles.container}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              colors={['#007AFF']}
-              tintColor={'#007AFF'}
-              title={'Se reîmprospătează...'}
-              titleColor={'#666'}
-            />
-          }
-        >
-          <View style={styles.header}>
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={() => {
-                if (router.canGoBack()) {
-                  router.back();
-                } else {
-                  router.push('/(home)' as any);
-                }
-              }}
-            >
-              <Ionicons name="arrow-back" size={24} color="#333" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>
-              {profileData.user.username || 'Profil'}
-            </Text>
-            <TouchableOpacity 
-              style={styles.settingsButton} 
-              onPress={() => console.log('TODO: Setări')}
-            >
-              <Ionicons name="settings-outline" size={24} color="#333" />
-            </TouchableOpacity>
-          </View>
-
-          <ProfileHeader 
-            user={null}
-            profile={profileData.user}
-            postCount={profileData.postCount}
-            connectionCount={profileData.connectionCount}
-            onEditPress={isOwnProfile ? openEditModal : () => {}}
-            isOwnProfile={isOwnProfile}
-          />
-
-          <UserPostsGrid 
-            posts={profileData.posts} 
-            onPostPress={openPostDetail} 
-            isOwnProfile={isOwnProfile}
-          />
-          
-        </ScrollView>
-
-        {isOwnProfile && (
-          <EditProfileModal
-            visible={editModalVisible}
-            onClose={() => setEditModalVisible(false)}
-            user={currentUser}
-            profile={profileData.user}
-            loadProfile={loadProfile}
-            requestUsernameChangeVerification={async (newUsername: string) => {
-              console.log('Solicitare schimbare username în [id].tsx pentru:', newUsername);
-              if (!currentUser) return false;
-              try {
-                // Aici ar trebui să fie logica reală de actualizare a username-ului în Clerk
-                // De exemplu, currentUser.update({ username: newUsername });
-                // Momentan, doar simulăm și returnăm true sau false
-                // IMPORTANT: Verifică documentația Clerk pentru metoda corectă și gestionarea erorilor
-                await currentUser.update({ username: newUsername }); 
-                return true; 
-              } catch (error) {
-                console.error('Eroare la actualizarea username-ului în Clerk:', error);
-                Alert.alert('Eroare', 'Nu s-a putut actualiza numele de utilizator.');
-                return false;
+      
+      {IS_WEB ? (
+        <View style={[styles.container, { backgroundColor: bgColor }]}>
+          <Animated.View 
+            style={[
+              styles.animatedContent,
+              {
+                transform: [
+                  { translateX }, 
+                  { scaleX }
+                ]
               }
-            }}
-          />
-        )}
+            ]}
+            onTouchStart={handleWebSwipe}
+          >
+            <ProfileContent 
+              profileData={profileData}
+              isOwnProfile={isOwnProfile}
+              refreshing={refreshing}
+              handleRefresh={handleRefresh}
+              openEditModal={openEditModal}
+              openPostDetail={openPostDetail}
+              goBack={goBack}
+              toggleProfileMenu={toggleProfileMenu}
+              router={router}
+              currentUser={currentUser}
+            />
+          </Animated.View>
+        </View>
+      ) : (
+        <View style={[styles.container, { backgroundColor: bgColor }]}>
+          <PanGestureHandler
+            onGestureEvent={onGestureEvent}
+            onEnded={onGestureEnd}
+          >
+            <Animated.View 
+              style={[
+                styles.animatedContent,
+                {
+                  transform: [
+                    { translateX }, 
+                    { scaleX }
+                  ]
+                }
+              ]}
+            >
+              <ProfileContent 
+                profileData={profileData}
+                isOwnProfile={isOwnProfile}
+                refreshing={refreshing}
+                handleRefresh={handleRefresh}
+                openEditModal={openEditModal}
+                openPostDetail={openPostDetail}
+                goBack={goBack}
+                toggleProfileMenu={toggleProfileMenu}
+                router={router}
+                currentUser={currentUser}
+              />
+            </Animated.View>
+          </PanGestureHandler>
+        </View>
+      )}
+      
+      {isOwnProfile && (
+        <EditProfileModal
+          visible={editModalVisible}
+          onClose={() => setEditModalVisible(false)}
+          user={currentUser}
+          profile={profileData.user}
+          loadProfile={loadProfile}
+          requestUsernameChangeVerification={async (newUsername: string) => {
+            if (!currentUser) return false;
+            try {
+              await currentUser.update({ username: newUsername }); 
+              return true; 
+            } catch (error) {
+              console.error('Eroare la actualizarea username-ului în Clerk:', error);
+              Alert.alert('Eroare', 'Nu s-a putut actualiza numele de utilizator.');
+              return false;
+            }
+          }}
+        />
+      )}
 
-        <PostDetailModal
-          visible={postDetailVisible}
-          onClose={closePostDetail}
-          post={selectedPost}
-          postUser={selectedPostUser}
-          currentUserId={currentUser?.id}
+      <PostDetailModal
+        visible={postDetailVisible}
+        onClose={closePostDetail}
+        post={selectedPost}
+        postUser={selectedPostUser}
+        currentUserId={currentUser?.id}
+      />
+
+      <AppSettingsMenu isVisible={isProfileMenuOpen} onClose={toggleProfileMenu} />
+    </GestureHandlerRootView>
+  );
+}
+
+// Componenta separată pentru conținutul profilului pentru a evita duplicarea codului
+function ProfileContent({
+  profileData, 
+  isOwnProfile, 
+  refreshing, 
+  handleRefresh, 
+  openEditModal, 
+  openPostDetail, 
+  goBack, 
+  toggleProfileMenu, 
+  router, 
+  currentUser
+}: {
+  profileData: ProfileData,
+  isOwnProfile: boolean,
+  refreshing: boolean,
+  handleRefresh: () => Promise<void>,
+  openEditModal: () => void,
+  openPostDetail: (post: Post) => void,
+  goBack: () => void,
+  toggleProfileMenu: () => void,
+  router: any,
+  currentUser: any
+}) {
+  return (
+    <SafeAreaView style={styles.contentContainer}>
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={goBack}
+        >
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>
+          {profileData.user.username || 'Profil'}
+        </Text>
+        <TouchableOpacity 
+          style={styles.settingsButton} 
+          onPress={toggleProfileMenu}
+        >
+          <Ionicons name="settings-outline" size={24} color="#333" />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={['#007AFF']}
+            tintColor={'#007AFF'}
+            title={'Se reîmprospătează...'}
+            titleColor={'#666'}
+          />
+        }
+      >
+        <ProfileHeader 
+          user={null}
+          profile={profileData.user}
+          postCount={profileData.postCount}
+          connectionCount={profileData.connectionCount}
+          onEditPress={isOwnProfile ? openEditModal : () => {}}
+          isOwnProfile={isOwnProfile}
         />
 
-        {/* Bottom Navigation */}
-        <View style={styles.bottomNav}>
-          <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => router.push('/(home)')}
-          >
-            <Ionicons name="home-outline" size={24} color="#666" />
-            <Text style={styles.navText}>Acasă</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => {
-              console.log('Pagina de explore trebuie configurată');
-            }}
-          >
-            <Ionicons name="compass-outline" size={24} color="#666" />
-            <Text style={styles.navText}>Explorează</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => router.push('/(home)/create-post')}
-          >
-            <Ionicons name="add-circle-outline" size={24} color="#666" />
-            <Text style={styles.navText}>Postează</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => {
-              console.log('Pagina de notificări trebuie configurată');
-            }}
-          >
-            <Ionicons name="notifications-outline" size={24} color="#666" />
-            <Text style={styles.navText}>Notificări</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.navItem} 
-            onPress={() => {
-              if (currentUser?.id) {
-                router.push(`/(profile)/${currentUser.id}` as any);
-              }
-            }}
-          >
-            <Ionicons 
-              name={isOwnProfile ? "person" : "person-outline"} 
-              size={24} 
-              color={isOwnProfile ? "#007AFF" : "#666"} 
-            />
-            <Text style={isOwnProfile ? styles.navTextActive : styles.navText}>
-              Profil
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    </>
+        <UserPostsGrid 
+          posts={profileData.posts} 
+          onPostPress={openPostDetail} 
+          isOwnProfile={isOwnProfile}
+        />
+        
+      </ScrollView>
+
+      {/* Bottom Navigation */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => router.push('/(home)')}
+        >
+          <Ionicons name="home-outline" size={24} color="#666" />
+          <Text style={styles.navText}>Acasă</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => {
+            console.log('Pagina de explore trebuie configurată');
+          }}
+        >
+          <Ionicons name="compass-outline" size={24} color="#666" />
+          <Text style={styles.navText}>Explorează</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => router.push('/(home)/create-post')}
+        >
+          <Ionicons name="add-circle-outline" size={24} color="#666" />
+          <Text style={styles.navText}>Postează</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => {
+            console.log('Pagina de notificări trebuie configurată');
+          }}
+        >
+          <Ionicons name="notifications-outline" size={24} color="#666" />
+          <Text style={styles.navText}>Notificări</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.navItem} 
+          onPress={() => {
+            if (currentUser?.id) {
+              router.push(`/(profile)/${currentUser.id}` as any);
+            }
+          }}
+        >
+          <Ionicons 
+            name={isOwnProfile ? "person" : "person-outline"} 
+            size={24} 
+            color={isOwnProfile ? "#007AFF" : "#666"} 
+          />
+          <Text style={isOwnProfile ? styles.navTextActive : styles.navText}>
+            Profil
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  animatedContent: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  contentContainer: {
     flex: 1,
     backgroundColor: '#fff',
   },

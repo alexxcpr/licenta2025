@@ -3,6 +3,7 @@ import { View, Text, FlatList, StyleSheet, ActivityIndicator, Platform, Image, D
 import { supabase } from '../utils/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import PostDetailModal from '../app/(home)/components/PostDetailModal';
+import PostOptionsDialog from './PostOptionsDialog';
 import { useUser } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import { getApiUrl } from '../config/backend';
@@ -44,67 +45,67 @@ interface DialogProps {
   onClose: () => void;
 }
 
-// Componenta de dialog cross-platform
-const CustomDialog = ({ visible, title, message, buttons = [], onClose }: DialogProps) => {
-  if (!visible) return null;
+// // Componenta de dialog cross-platform
+// const CustomDialog = ({ visible, title, message, buttons = [], onClose }: DialogProps) => {
+//   if (!visible) return null;
 
-  return (
-    <Modal
-      transparent={true}
-      visible={visible}
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <View style={dialogStyles.overlay}>
-        <View style={dialogStyles.dialogContainer}>
-          <View style={dialogStyles.dialogHeader}>
-            <Text style={dialogStyles.dialogTitle}>{title}</Text>
-          </View>
-          <View style={dialogStyles.dialogContent}>
-            <Text style={dialogStyles.dialogMessage}>{message}</Text>
-          </View>
-          <View style={dialogStyles.dialogActions}>
-            {buttons.map((button, index) => (
-              <Pressable
-                key={index}
-                style={({ pressed }) => [
-                  dialogStyles.dialogButton,
-                  button.style === 'cancel' && dialogStyles.cancelButton,
-                  button.style === 'destructive' && dialogStyles.destructiveButton,
-                  pressed && dialogStyles.dialogButtonPressed
-                ]}
-                onPress={() => {
-                  button.onPress();
-                  onClose();
-                }}
-              >
-                <Text 
-                  style={[
-                    dialogStyles.dialogButtonText, 
-                    button.style === 'destructive' && dialogStyles.destructiveButtonText
-                  ]}
-                >
-                  {button.text}
-                </Text>
-              </Pressable>
-            ))}
-            {buttons.length === 0 && (
-              <Pressable
-                style={({ pressed }) => [
-                  dialogStyles.dialogButton,
-                  pressed && dialogStyles.dialogButtonPressed
-                ]}
-                onPress={onClose}
-              >
-                <Text style={dialogStyles.dialogButtonText}>OK</Text>
-              </Pressable>
-            )}
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-};
+//   return (
+//     <Modal
+//       transparent={true}
+//       visible={visible}
+//       animationType="fade"
+//       onRequestClose={onClose}
+//     >
+//       <View style={dialogStyles.overlay}>
+//         <View style={dialogStyles.dialogContainer}>
+//           <View style={dialogStyles.dialogHeader}>
+//             <Text style={dialogStyles.dialogTitle}>{title}</Text>
+//           </View>
+//           <View style={dialogStyles.dialogContent}>
+//             <Text style={dialogStyles.dialogMessage}>{message}</Text>
+//           </View>
+//           <View style={dialogStyles.dialogActions}>
+//             {buttons.map((button, index) => (
+//               <Pressable
+//                 key={index}
+//                 style={({ pressed }) => [
+//                   dialogStyles.dialogButton,
+//                   button.style === 'cancel' && dialogStyles.cancelButton,
+//                   button.style === 'destructive' && dialogStyles.destructiveButton,
+//                   pressed && dialogStyles.dialogButtonPressed
+//                 ]}
+//                 onPress={() => {
+//                   button.onPress();
+//                   onClose();
+//                 }}
+//               >
+//                 <Text 
+//                   style={[
+//                     dialogStyles.dialogButtonText, 
+//                     button.style === 'destructive' && dialogStyles.destructiveButtonText
+//                   ]}
+//                 >
+//                   {button.text}
+//                 </Text>
+//               </Pressable>
+//             ))}
+//             {buttons.length === 0 && (
+//               <Pressable
+//                 style={({ pressed }) => [
+//                   dialogStyles.dialogButton,
+//                   pressed && dialogStyles.dialogButtonPressed
+//                 ]}
+//                 onPress={onClose}
+//               >
+//                 <Text style={dialogStyles.dialogButtonText}>OK</Text>
+//               </Pressable>
+//             )}
+//           </View>
+//         </View>
+//       </View>
+//     </Modal>
+//   );
+// };
 
 interface Props {
   onRefreshTriggered?: () => void;
@@ -357,55 +358,35 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
     }
   };
 
-  // Funcția pentru a gestiona acțiunea de raportare
-  const handleReport = (postId: number) => {
-    console.log('Raportare pentru postarea', postId);
+  // Funcția pentru a deschide meniul de opțiuni
+  const openOptionsMenu = (postId: number) => {
+    console.log('Apăsat buton opțiuni pentru postId:', postId);
     
-    if (isNative) {
-      Alert.alert(
-        "Raportează postarea",
-        "Ești sigur că vrei să raportezi această postare?",
-        [
-          {
-            text: "Anulează",
-            style: "cancel"
-          },
-          {
-            text: "Raportează",
-            onPress: () => {
-              console.log(`Postarea ${postId} a fost raportată`);
-              Alert.alert(
-                "Mulțumim",
-                "Raportarea ta a fost trimisă și va fi analizată."
-              );
-            }
-          }
-        ]
-      );
-    } else {
-      showDialog(
-        "Raportează postarea",
-        "Ești sigur că vrei să raportezi această postare?",
-        [
-          {
-            text: "Anulează",
-            style: "cancel",
-            onPress: () => console.log("Raportare anulată")
-          },
-          {
-            text: "Raportează",
-            style: "destructive",
-            onPress: () => {
-              console.log(`Postarea ${postId} a fost raportată`);
-              showDialog(
-                "Mulțumim",
-                "Raportarea ta a fost trimisă și va fi analizată."
-              );
-            }
-          }
-        ]
-      );
+    // Găsim postarea selectată
+    const post = posts.find(p => p.id_post === postId);
+    console.log('Post găsit:', post);
+    
+    if (!post) {
+      console.log('Nu s-a găsit postarea cu ID:', postId);
+      return;
     }
+    
+    // Verificăm dacă utilizatorul curent este autorul postării
+    const isAuthor = !!(user?.id && post.id_user === user.id);
+    console.log('Este autor:', isAuthor, 'User ID:', user?.id, 'Post User ID:', post.id_user);
+    
+    // Setăm stările pentru dialogul cu acțiuni
+    setSelectedPost(post);
+    setDialogVisible(true);
+    console.log('Dialog visible setat la true');
+  };
+
+  // Funcția pentru a gestiona acțiunea de raportare
+  const handleReportPost = () => {
+    if (!selectedPost) return;
+    
+    setDialogVisible(false);
+    console.log(`Postarea ${selectedPost.id_post} a fost raportată`);
   };
 
   // Funcții pentru acțiunile butoanelor
@@ -421,12 +402,6 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
 
   const handleSend = (postId: number) => {
     console.log('Buton send apăsat pentru postarea', postId);
-    
-    if (isNative) {
-      Alert.alert("Trimite", "Postarea a fost trimisă");
-    } else {
-      showDialog("Trimite", "Postarea a fost trimisă");
-    }
   };
 
   const handleSave = (postId: number) => {
@@ -439,41 +414,92 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
     }));
   };
 
-  // Funcție pentru a deschide meniul de opțiuni
-  const openOptionsMenu = (postId: number) => {
-    console.log('Apăsat buton opțiuni');
+  // Funcție pentru ștergerea postării
+  const handleDeletePost = async () => {
+    if (!selectedPost || !user?.id || selectedPost.id_user !== user.id) return;
     
-    if (isNative) {
-      Alert.alert(
-        "Opțiuni",
-        "Ce dorești să faci?",
-        [
-          {
-            text: "Raportează postarea",
-            onPress: () => handleReport(postId)
-          },
-          {
-            text: "Anulează",
-            style: "cancel"
+    setDialogVisible(false);
+    
+    try {
+      // Ștergem imaginea din bucket (dacă există)
+      if (selectedPost.image_url) {
+        try {
+          // Extragem numele fișierului din URL
+          const urlParts = selectedPost.image_url.split('/');
+          const fileName = urlParts[urlParts.length - 1];
+          
+          // Determinăm calea corectă în bucket - 'images' e bucket-ul, 'posts' e folder-ul
+          let filePath = fileName;
+          
+          // Dacă URL-ul conține calea specifică folderului posts
+          if (selectedPost.image_url.includes('/posts/')) {
+            filePath = `posts/${fileName}`;
           }
-        ]
-      );
-    } else {
-      showDialog(
-        "Opțiuni",
-        "Ce dorești să faci?",
-        [
-          {
-            text: "Raportează postarea",
-            onPress: () => handleReport(postId)
-          },
-          {
-            text: "Anulează",
-            style: "cancel",
-            onPress: () => console.log("Opțiuni anulate")
+          
+          // Ștergem fișierul din bucket
+          const { error: storageError } = await supabase.storage
+            .from('images')
+            .remove([filePath]);
+            
+          if (storageError) {
+            console.error('Eroare la ștergerea imaginii din bucket:', storageError);
+            // Continuăm cu ștergerea postării chiar dacă imaginea nu a putut fi ștearsă
           }
-        ]
-      );
+        } catch (storageError) {
+          console.error('Eroare la procesarea ștergerii imaginii:', storageError);
+          // Continuăm cu ștergerea postării chiar dacă imaginea nu a putut fi ștearsă
+        }
+      }
+      
+      // Ștergem mai întâi comentariile asociate postării
+      const { error: commentsError } = await supabase
+        .from('comment')
+        .delete()
+        .eq('id_post', selectedPost.id_post);
+      
+      if (commentsError) {
+        console.error('Eroare la ștergerea comentariilor:', commentsError);
+        if (isNative) {
+          Alert.alert('Eroare', 'Nu s-au putut șterge comentariile postării. Încercați din nou.');
+        } else {
+          showDialog('Eroare', 'Nu s-au putut șterge comentariile postării. Încercați din nou.');
+        }
+        return;
+      }
+      
+      // Apoi ștergem postarea
+      const { error: postError } = await supabase
+        .from('post')
+        .delete()
+        .eq('id_post', selectedPost.id_post);
+      
+      if (postError) {
+        console.error('Eroare la ștergerea postării:', postError);
+        if (isNative) {
+          Alert.alert('Eroare', 'Nu s-a putut șterge postarea. Încercați din nou.');
+        } else {
+          showDialog('Eroare', 'Nu s-a putut șterge postarea. Încercați din nou.');
+        }
+        return;
+      }
+      
+      // Notificăm utilizatorul că postarea a fost ștearsă
+      if (isNative) {
+        Alert.alert('Succes', 'Postarea a fost ștearsă cu succes.');
+      } else {
+        showDialog('Succes', 'Postarea a fost ștearsă cu succes.');
+      }
+      
+      // Reîncărcăm lista de postări
+      fetchData();
+      
+    } catch (error) {
+      console.error('Eroare la ștergerea postării:', error);
+      if (isNative) {
+        Alert.alert('Eroare', 'A apărut o eroare la ștergerea postării. Încercați din nou.');
+      } else {
+        showDialog('Eroare', 'A apărut o eroare la ștergerea postării. Încercați din nou.');
+      }
     }
   };
 
@@ -498,14 +524,14 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        {/* Dialogul personalizat */}
-        <CustomDialog 
-          visible={dialogVisible} 
-          title={dialogConfig.title} 
-          message={dialogConfig.message} 
-          buttons={dialogConfig.buttons}
+      <View style={styles.container}>        
+        {/* Dialog pentru acțiunile postării */}
+        <PostOptionsDialog 
+          visible={dialogVisible}
           onClose={() => setDialogVisible(false)}
+          onReport={handleReportPost}
+          onDelete={handleDeletePost}
+          canDelete={!!(user?.id && selectedPost?.id_user === user.id)}
         />
         
         {posts.length === 0 ? (

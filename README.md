@@ -4,12 +4,12 @@
 Dezvoltarea unei platforme de rețea socială dedicată profesioniștilor dintr-un anumit domeniu, cu funcționalități de networking și colaborare.
 
 ## 💻 Tehnologii folosite
-- Expo V53
+    - Expo V53
 - React Native
-- TypeScript
+    - TypeScript
 - Clerk (autentificare)
 - Supabase (bază de date)
-- Express (backend)
+    - Express (backend)
 - Server backend cloud: [Render](https://licenta2025.onrender.com/)
 
 ## ✅ Funcționalități implementate
@@ -68,6 +68,20 @@ Utilizatorul primește notificări când:
 - Pagină pentru grup cu postările specifice
 - Chat de grup
 
+### 📝 Sistem de roluri pentru utilizatori
+- **Admin**: 
+  - Control complet asupra platformei
+  - Acces la dashboard admin
+  - Gestionarea utilizatorilor și conținutului
+- **Moderator**: 
+  - Moderarea conținutului
+  - Gestionarea raportărilor
+  - Gestionarea grupurilor
+- **Utilizator standard**: 
+  - Funcționalități de bază
+  - Postare conținut
+  - Interacțiune cu alți utilizatori
+
 ### 📝 Dashboard admin
 - Postări raportate
 - Conturi raportate
@@ -88,3 +102,51 @@ Utilizatorul primește notificări când:
 ## ✅ Modificări recente
 - Eliminarea secțiunii de story-uri (nu există pe LinkedIn)
 - Eliminarea feed-ului redundant de pe pagina principală
+
+## 🔄 Ordinea recomandată de implementare
+
+1. **Sistem de roluri pentru utilizatori** - Prioritate maximă, deoarece definește structura de bază a permisiunilor în aplicație și influențează toate celelalte funcționalități.
+
+2. **Conexiuni între utilizatori** - Implementarea tabelei de conexiuni și relațiilor în Supabase este esențială pentru funcționalitatea de rețea socială.
+
+3. **Pagina "Explorează"** - După implementarea conexiunilor, această pagină devine naturală pentru a extinde rețeaua utilizatorilor.
+
+4. **Pagina setări** - Implementarea unei interfețe centralizate pentru gestionarea contului și preferințelor.
+
+5. **Funcționalități pentru grupuri** - Oferă valoare adăugată platformei și încurajează colaborarea între profesioniști.
+
+6. **Sistem de notificări** - Crește engagement-ul utilizatorilor și îi ține informați despre activitățile relevante.
+
+7. **Chat în timp real** - Facilitează comunicarea directă între utilizatori, crescând utilitatea platformei.
+
+8. **Dashboard admin** - După implementarea funcționalităților de bază, este important să oferi instrumente de administrare.
+
+9. **Îmbunătățiri UI/UX** - Rezolvarea problemelor de afișare și optimizarea experienței utilizatorilor.
+
+10. **Containerizare** - Ultimul pas pentru pregătirea pentru producție și scalabilitate.
+
+
+## Analiza Sistem de roluri pentru utilizatori
+
+### Funcționalități pentru utilizatori standard
+- ✅ Creare cont
+- ✅Login
+- ✅Logout
+- Schimbare parolă
+- ✅Schimbare nume
+- ✅Schimbare descrieres
+
+### Funcționalități pentru utilizatori moderatori
+- Acces la dashboard moderare, pagina se va regasi in setari -> dashboard moderare
+- Moderează conținutul
+- Gestionează raportările (apar in dashboard moderare)
+- Gestionează grupurile (apar in dashboard moderare)
+  
+### Funcționalități pentru utilizatori admin
+- Control complet asupra platformei
+- Acces la dashboard admin, pagina se va regasi in setari -> dashboard admin + acces la dashboard moderare
+- In dashnoard admin se vor afisa statistici legate de platforma (numar de utilizatori, numar de postari, numar de comentarii, numar de like-uri)
+- Gestionarea utilizatorilor și conținutului
+
+
+

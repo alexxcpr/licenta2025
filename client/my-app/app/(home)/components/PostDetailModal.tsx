@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Modal,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   Image,
   ScrollView,
   SafeAreaView,
@@ -15,9 +16,16 @@ import {
   Dimensions,
   Platform,
   StatusBar,
+  Animated
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../utils/supabase';
+import { PanGestureHandler, GestureHandlerRootView } from 'react-native-gesture-handler';
+import PostOptionsDialog from '../../../components/PostOptionsDialog';
+
+// Constante pentru gesturi
+const SWIPE_THRESHOLD = 80;
+const IS_IOS = Platform.OS === 'ios';
 
 // Interfețe pentru tipurile de date
 interface PostData {
@@ -68,6 +76,25 @@ export default function PostDetailModal({
   const [addingComment, setAddingComment] = useState(false);
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [actionsDialogVisible, setActionsDialogVisible] = useState(false);
+  const [deletingPost, setDeletingPost] = useState(false);
+  
+  // Referințe pentru animații de swipe
+  const translateX = useRef(new Animated.Value(0)).current;
+  const scaleX = useRef(new Animated.Value(1)).current;
+  const [bgColor, setBgColor] = useState('#ffffff');
+
+  // Verificăm dacă utilizatorul curent este autorul postării
+  const isAuthor = !!(currentUserId && post?.id_user === currentUserId);
+
+  // Resetăm animațiile când se deschide modalul
+  useEffect(() => {
+    if (visible) {
+      translateX.setValue(0);
+      scaleX.setValue(1);
+      setBgColor('#ffffff');
+    }
+  }, [visible]);
 
   // Încărcare comentarii când se deschide modalul
   useEffect(() => {
@@ -76,6 +103,67 @@ export default function PostDetailModal({
       loadComments();
     }
   }, [visible, post]);
+
+  // Funcția de navigare înapoi cu animație
+  const closeWithAnimation = () => {
+    // Asigurăm că folosim separate animația pentru culoare
+    setBgColor('#f2f2f2');
+    
+    // Animațiile native separat
+    Animated.parallel([
+      Animated.timing(translateX, {
+        toValue: screenWidth,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleX, {
+        toValue: 0.9,
+        duration: 300,
+        useNativeDriver: true,
+      })
+    ]).start(() => {
+      onClose();
+    });
+  };
+
+  // Gestionarea gestului de swipe
+  const onGestureEvent = ({ nativeEvent }: { nativeEvent: any }) => {
+    if (nativeEvent.translationX > 0) {
+      // Animații native
+      translateX.setValue(nativeEvent.translationX);
+      const scale = Math.max(0.9, 1 - (nativeEvent.translationX / 1000));
+      scaleX.setValue(scale);
+      
+      // Culoarea de fundal non-nativă - actualizată separat
+      if (nativeEvent.translationX > 30) {
+        setBgColor('#f2f2f2');
+      }
+    }
+  };
+
+  const onGestureEnd = ({ nativeEvent }: { nativeEvent: any }) => {
+    if (nativeEvent.translationX > SWIPE_THRESHOLD) {
+      // Dacă swipe-ul depășește pragul, continuăm animația și închidem
+      closeWithAnimation();
+    } else {
+      // Altfel, revenim la poziția inițială
+      Animated.parallel([
+        Animated.spring(translateX, {
+          toValue: 0,
+          useNativeDriver: true,
+          bounciness: 5,
+        }),
+        Animated.spring(scaleX, {
+          toValue: 1,
+          useNativeDriver: true,
+          bounciness: 5,
+        })
+      ]).start();
+      
+      // Resetăm culoarea separat
+      setBgColor('#ffffff');
+    }
+  };
 
   const loadComments = async () => {
     if (!post) return;
@@ -212,29 +300,85 @@ export default function PostDetailModal({
     console.log('Buton save apăsat pentru postarea', post?.id_post);
   };
 
-  const handleSend = () => {
-    console.log('Buton send apăsat pentru postarea', post?.id_post);
-    Alert.alert('Trimite', 'Postarea a fost trimisă');
+  const handleReport = () => {
+    console.log(`Postarea ${post?.id_post} a fost raportată`);
   };
 
-  const handleReport = () => {
-    Alert.alert(
-      'Raportează postarea',
-      'Ești sigur că vrei să raportezi această postare?',
-      [
-        {
-          text: 'Anulează',
-          style: 'cancel'
-        },
-        {
-          text: 'Raportează',
-          onPress: () => {
-            console.log(`Postarea ${post?.id_post} a fost raportată`);
-            Alert.alert('Mulțumim', 'Raportarea ta a fost trimisă și va fi analizată.');
+  const handleSend = () => {
+    console.log('Buton send apăsat pentru postarea', post?.id_post);
+  };
+
+  const handleDelete = async () => {
+    if (!post || !currentUserId || post.id_user !== currentUserId) return;
+    
+    setDeletingPost(true);
+    try {
+      // Ștergem imaginea din bucket (dacă există)
+      if (post.image_url) {
+        try {
+          // Extragem numele fișierului din URL
+          const urlParts = post.image_url.split('/');
+          const fileName = urlParts[urlParts.length - 1];
+          
+          // Determinăm calea corectă în bucket - 'images' e bucket-ul, 'posts' e folder-ul
+          let filePath = fileName;
+          
+          // Dacă URL-ul conține calea specifică folderului posts
+          if (post.image_url.includes('/posts/')) {
+            filePath = `posts/${fileName}`;
           }
+          
+          // Ștergem fișierul din bucket
+          const { error: storageError } = await supabase.storage
+            .from('images')
+            .remove([filePath]);
+            
+          if (storageError) {
+            console.error('Eroare la ștergerea imaginii din bucket:', storageError);
+            // Continuăm cu ștergerea postării chiar dacă imaginea nu a putut fi ștearsă
+          }
+        } catch (storageError) {
+          console.error('Eroare la procesarea ștergerii imaginii:', storageError);
+          // Continuăm cu ștergerea postării chiar dacă imaginea nu a putut fi ștearsă
         }
-      ]
-    );
+      }
+      
+      // Ștergem mai întâi comentariile asociate postării
+      const { error: commentsError } = await supabase
+        .from('comment')
+        .delete()
+        .eq('id_post', post.id_post);
+      
+      if (commentsError) {
+        console.error('Eroare la ștergerea comentariilor:', commentsError);
+        Alert.alert('Eroare', 'Nu s-au putut șterge comentariile postării. Încercați din nou.');
+        return;
+      }
+      
+      // Apoi ștergem postarea
+      const { error: postError } = await supabase
+        .from('post')
+        .delete()
+        .eq('id_post', post.id_post);
+      
+      if (postError) {
+        console.error('Eroare la ștergerea postării:', postError);
+        Alert.alert('Eroare', 'Nu s-a putut șterge postarea. Încercați din nou.');
+        return;
+      }
+      
+      Alert.alert('Succes', 'Postarea a fost ștearsă cu succes.');
+      closeWithAnimation(); // Închidem modalul după ștergere
+    } catch (error) {
+      console.error('Eroare la ștergerea postării:', error);
+      Alert.alert('Eroare', 'A apărut o eroare la ștergerea postării. Încercați din nou.');
+    } finally {
+      setDeletingPost(false);
+    }
+  };
+
+  const toggleActionsDialog = () => {
+    setActionsDialogVisible(!actionsDialogVisible);
   };
 
   if (!post || !postUser) return null;
@@ -242,154 +386,192 @@ export default function PostDetailModal({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
-      presentationStyle="fullScreen"
-      onRequestClose={onClose}
+      animationType="none"
+      transparent={true}
+      onRequestClose={closeWithAnimation}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      <SafeAreaView style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="arrow-back" size={24} color="#333" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Postare</Text>
-          <TouchableOpacity onPress={handleReport} style={styles.optionsButton}>
-            <Ionicons name="ellipsis-horizontal" size={24} color="#333" />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Informații utilizator */}
-          <View style={styles.userInfo}>
-            <Image 
-              source={{ uri: postUser.avatar_url || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png' }} 
-              style={styles.avatar} 
-            />
-            <Text style={styles.username}>{postUser.username}</Text>
-          </View>
-
-          {/* Imaginea postării (dacă există) */}
-          {post.image_url && (
-            <Image 
-              source={{ uri: post.image_url }} 
-              style={[styles.postImage, { height: 600, backgroundColor: 'transparent' }]}
-              onError={(e) => {
-                console.error(`[PostDetailModal] Eroare la încărcarea imaginii postării. URL încercat: ${post.image_url}`);
-                console.error('[PostDetailModal] Detalii eroare nativă:', e.nativeEvent.error);
-              }}
-              onLayout={(event) => {
-                const { width, height } = event.nativeEvent.layout;
-                console.log(`[PostDetailModal] Layout imagine: width=${width}, height=${height}`);
-              }}
-            />
-          )}
-
-          {/* Conținutul postării */}
-          <View style={styles.postContentContainer}>
-            <Text style={styles.postText}>{post.content}</Text>
-            <Text style={styles.postDate}>{formatTimeAgo(post.date_created)}</Text>
-          </View>
-
-          {/* Acțiuni postare */}
-          <View style={styles.actionsContainer}>
-            <TouchableOpacity onPress={handleLike} style={styles.actionButton}>
-              <Ionicons name={liked ? "heart" : "heart-outline"} size={28} color={liked ? "#007AFF" : "#333"} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => console.log("Comment action")} style={styles.actionButton}>
-              <Ionicons name="chatbubble-outline" size={28} color="#333" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleSend} style={styles.actionButton}>
-              <Ionicons name="paper-plane-outline" size={28} color="#333" />
-            </TouchableOpacity>
-            <View style={{ flex: 1 }} /> 
-            <TouchableOpacity onPress={handleSave} style={styles.actionButton}>
-              <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={28} color={saved ? "#007AFF" : "#333"} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Secțiune Comentarii */}
-          <View style={styles.commentsSection}>
-            <Text style={styles.commentsTitle}>
-              Comentarii ({comments.length})
-            </Text>
-            
-            {loading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color="#007AFF" />
-                <Text style={styles.loadingText}>Se încarcă comentariile...</Text>
-              </View>
-            ) : (
-              <>
-                {comments.length > 0 ? (
-                  comments.map((comment) => {
-                    return (
-                      <View key={comment.id_comment} style={styles.commentContainer}>
-                        <Image 
-                          source={{ 
-                            uri: comment.user?.avatar_url || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png' 
-                          }} 
-                          style={styles.commentAvatar} 
-                          onError={(e) => {
-                            console.error(`[PostDetailModal] Eroare la încărcarea avatarului pentru comentariul ${comment.id_comment}. URL încercat: ${comment.user?.avatar_url}`);
-                            console.error('[PostDetailModal] Detalii eroare nativă avatar:', e.nativeEvent.error);
-                          }}
-                        />
-                        <View style={styles.commentContent}>
-                          <View style={styles.commentHeader}>
-                            <Text style={styles.commentUser}>
-                              { (comment.user?.username && comment.user.username.length > 20 ? comment.user.username.substring(0, 20) + '..' : comment.user?.username) || 'Utilizator necunoscut'}
-                            </Text>
-                            <Text style={styles.commentDate}>
-                              {formatTimeAgo(comment.date_created)}
-                            </Text>
-                          </View>
-                          <Text style={styles.commentText}>{comment.content}</Text>
-                        </View>
-                      </View>
-                    );
-                  })
-                ) : (
-                  <Text style={styles.noCommentsText}>Nu există comentarii încă.</Text>
-                )}
-              </>
-            )}
-          </View>
-        </ScrollView>
-
-        {/* Input pentru comentarii */}
-        <View style={styles.addCommentContainer}>
-          <TextInput
-            style={styles.commentInput}
-            placeholder="Adaugă un comentariu..."
-            placeholderTextColor="#999"
-            value={newComment}
-            onChangeText={setNewComment}
-            multiline
-            maxLength={500}
-          />
-          <TouchableOpacity 
-            onPress={addComment}
-            disabled={!newComment.trim() || addingComment}
-            style={[
-              styles.sendButton,
-              (!newComment.trim() || addingComment) && styles.sendButtonDisabled
-            ]}
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <View style={[styles.container, { backgroundColor: bgColor }]}>
+          <PanGestureHandler
+            onGestureEvent={onGestureEvent}
+            onEnded={onGestureEnd}
           >
-            {addingComment ? (
-              <ActivityIndicator size="small" color="#007AFF" />
-            ) : (
-              <Ionicons name="send" size={20} color="#fff" />
-            )}
-          </TouchableOpacity>
+            <Animated.View 
+              style={[
+                styles.animatedContent,
+                {
+                  transform: [
+                    { translateX }, 
+                    { scaleX }
+                  ]
+                }
+              ]}
+            >
+              <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+              <SafeAreaView style={styles.safeArea}>
+                {/* Header */}
+                <View style={styles.header}>
+                  <TouchableOpacity onPress={closeWithAnimation} style={styles.closeButton}>
+                    <Ionicons name="arrow-back" size={24} color="#333" />
+                  </TouchableOpacity>
+                  <Text style={styles.headerTitle}>Postare</Text>
+                  <TouchableOpacity onPress={toggleActionsDialog} style={styles.optionsButton}>
+                    <Ionicons name="ellipsis-horizontal" size={24} color="#333" />
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                  {/* Informații utilizator */}
+                  <View style={styles.userInfo}>
+                    <Image 
+                      source={{ uri: postUser.avatar_url || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png' }} 
+                      style={styles.avatar} 
+                    />
+                    <Text style={styles.username}>{postUser.username}</Text>
+                  </View>
+
+                  {/* Imaginea postării (dacă există) */}
+                  {post.image_url && (
+                    <Image 
+                      source={{ uri: post.image_url }} 
+                      style={[styles.postImage, { height: 600, backgroundColor: 'transparent' }]}
+                      onError={(e) => {
+                        console.error(`[PostDetailModal] Eroare la încărcarea imaginii postării. URL încercat: ${post.image_url}`);
+                        console.error('[PostDetailModal] Detalii eroare nativă:', e.nativeEvent.error);
+                      }}
+                      onLayout={(event) => {
+                        const { width, height } = event.nativeEvent.layout;
+                        console.log(`[PostDetailModal] Layout imagine: width=${width}, height=${height}`);
+                      }}
+                    />
+                  )}
+
+                  {/* Conținutul postării */}
+                  <View style={styles.postContentContainer}>
+                    <Text style={styles.postText}>{post.content}</Text>
+                    <Text style={styles.postDate}>{formatTimeAgo(post.date_created)}</Text>
+                  </View>
+
+                  {/* Acțiuni postare */}
+                  <View style={styles.actionsContainer}>
+                    <TouchableOpacity onPress={handleLike} style={styles.actionButton}>
+                      <Ionicons name={liked ? "heart" : "heart-outline"} size={28} color={liked ? "#007AFF" : "#333"} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => console.log("Comment action")} style={styles.actionButton}>
+                      <Ionicons name="chatbubble-outline" size={28} color="#333" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleSend} style={styles.actionButton}>
+                      <Ionicons name="paper-plane-outline" size={28} color="#333" />
+                    </TouchableOpacity>
+                    <View style={{ flex: 1 }} /> 
+                    <TouchableOpacity onPress={handleSave} style={styles.actionButton}>
+                      <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={28} color={saved ? "#007AFF" : "#333"} />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Secțiune Comentarii */}
+                  <View style={styles.commentsSection}>
+                    <Text style={styles.commentsTitle}>
+                      Comentarii ({comments.length})
+                    </Text>
+                    
+                    {loading ? (
+                      <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="small" color="#007AFF" />
+                        <Text style={styles.loadingText}>Se încarcă comentariile...</Text>
+                      </View>
+                    ) : (
+                      <>
+                        {comments.length > 0 ? (
+                          comments.map((comment) => {
+                            return (
+                              <View key={comment.id_comment} style={styles.commentContainer}>
+                                <Image 
+                                  source={{ 
+                                    uri: comment.user?.avatar_url || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png' 
+                                  }} 
+                                  style={styles.commentAvatar} 
+                                  onError={(e) => {
+                                    console.error(`[PostDetailModal] Eroare la încărcarea avatarului pentru comentariul ${comment.id_comment}. URL încercat: ${comment.user?.avatar_url}`);
+                                    console.error('[PostDetailModal] Detalii eroare nativă avatar:', e.nativeEvent.error);
+                                  }}
+                                />
+                                <View style={styles.commentContent}>
+                                  <View style={styles.commentHeader}>
+                                    <Text style={styles.commentUser}>
+                                      { (comment.user?.username && comment.user.username.length > 20 ? comment.user.username.substring(0, 20) + '..' : comment.user?.username) || 'Utilizator necunoscut'}
+                                    </Text>
+                                    <Text style={styles.commentDate}>
+                                      {formatTimeAgo(comment.date_created)}
+                                    </Text>
+                                  </View>
+                                  <Text style={styles.commentText}>{comment.content}</Text>
+                                </View>
+                              </View>
+                            );
+                          })
+                        ) : (
+                          <Text style={styles.noCommentsText}>Nu există comentarii încă.</Text>
+                        )}
+                      </>
+                    )}
+                  </View>
+                </ScrollView>
+
+                {/* Input pentru comentarii */}
+                <View style={styles.addCommentContainer}>
+                  <TextInput
+                    style={styles.commentInput}
+                    placeholder="Adaugă un comentariu..."
+                    placeholderTextColor="#999"
+                    value={newComment}
+                    onChangeText={setNewComment}
+                    multiline
+                    maxLength={500}
+                  />
+                  <TouchableOpacity 
+                    onPress={addComment}
+                    disabled={!newComment.trim() || addingComment}
+                    style={[
+                      styles.sendButton,
+                      (!newComment.trim() || addingComment) && styles.sendButtonDisabled
+                    ]}
+                  >
+                    {addingComment ? (
+                      <ActivityIndicator size="small" color="#007AFF" />
+                    ) : (
+                      <Ionicons name="send" size={20} color="#fff" />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </SafeAreaView>
+            </Animated.View>
+          </PanGestureHandler>
+          
+          {/* Dialog pentru acțiunile postării */}
+          <PostOptionsDialog 
+            visible={actionsDialogVisible} 
+            onClose={toggleActionsDialog}
+            onReport={handleReport}
+            onDelete={handleDelete}
+            canDelete={isAuthor}
+          />
         </View>
-      </SafeAreaView>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
 
-const styles = StyleSheet.create({
+// Exportăm stilurile pentru a putea fi refolosite
+export const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  animatedContent: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  safeArea: {
     flex: 1,
     backgroundColor: '#fff',
   },
@@ -558,5 +740,5 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 8,
     color: '#666',
-  }
+  },
 }); 

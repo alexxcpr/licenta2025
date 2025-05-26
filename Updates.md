@@ -2,6 +2,20 @@
 
 ⬇️alpha -> 🔜beta -> 🔜release candidate(RC) -> 🔜versiune finala
 
+## alpha 01.0.3
+*IMPLEMENTARI NOI*
+- adaugare roluri pentru utilizatori (Moderator, Admin)
+- functionalitate pentru butonul de setari (dashboard moderare, dashboard admin, delogheaza-te) atat in home page cat si in profile page
+- swipe gesture pentru a inchide meniul de setari.
+- swipe gesture pentru a inchide modalul de editare a profilului.
+- swipe gesture pentru a reveni la pagina anterioara din pagina de profil
+- animatii pentru swipe gestures
+*IMBUNATATIRI*
+- tranformat buton optiuni postare in dialog din alerta + estetizare
+- butonul de sign out primeste props si se deschide modalul de confirmare pentru a se loga din cont
+*BUG FIXES*
+
+
 ## alpha 01.0.2
 
 *IMPLEMENTARI NOI*

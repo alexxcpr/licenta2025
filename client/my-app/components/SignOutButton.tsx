@@ -9,12 +9,34 @@ import {
   View,
   Text,
   Modal,
-  Pressable 
+  Pressable, 
+  StyleProp,
+  ViewStyle,
+  TextStyle,
+  ImageStyle // Technically for Ionicons it's TextStyle but ImageStyle is common mental model
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 
-export const SignOutButton: React.FC = () => {
+export interface SignOutButtonProps {
+  containerStyle?: StyleProp<ViewStyle>;
+  iconName?: string; 
+  iconSize?: number;
+  iconColor?: string;
+  iconStyle?: StyleProp<ImageStyle>; // Ionicons style is technically TextStyle
+  text?: string;
+  textStyle?: StyleProp<TextStyle>;
+}
+
+export const SignOutButton: React.FC<SignOutButtonProps> = ({
+  containerStyle,
+  iconName = "log-out-outline",
+  iconSize = 24,
+  iconColor = "#333",
+  iconStyle,
+  text,
+  textStyle
+}) => {
   // Use `useClerk()` to access the `signOut()` function
   const { signOut } = useClerk()
   const router = useRouter()
@@ -69,9 +91,17 @@ export const SignOutButton: React.FC = () => {
     <>
       <TouchableOpacity 
         onPress={handleSignOut}
-        style={styles.signOutButton}
+        style={[styles.defaultButtonStyles, containerStyle]} // Apply default and then custom container styles
       >
-        <Ionicons name="log-out-outline" size={24} color="#333" />
+        <Ionicons 
+          name={iconName as any} // Cast to any if specific Ionicons names type is too restrictive
+          size={iconSize} 
+          color={iconColor} 
+          style={iconStyle}
+        />
+        {text && (
+          <Text style={[styles.defaultTextStyles, textStyle]}>{text}</Text>
+        )}
       </TouchableOpacity>
       
       <Modal
@@ -112,9 +142,16 @@ export const SignOutButton: React.FC = () => {
 }
 
 const styles = StyleSheet.create({
-  signOutButton: {
+  defaultButtonStyles: { // Renamed from signOutButton and made more generic
     padding: 5,
-    marginLeft: 10,
+    // marginLeft: 10, // Removed specific margin, can be added via containerStyle if needed for header instance
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  defaultTextStyles: {
+    marginLeft: 8, // Space between icon and text
+    fontSize: 16, // A sensible default
+    color: '#333', // Default text color
   },
   centeredView: {
     flex: 1,

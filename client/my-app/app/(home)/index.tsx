@@ -1,12 +1,12 @@
 import { useUser } from '@clerk/clerk-expo'
 import { useRouter } from 'expo-router'
 import { Text, View, StyleSheet, Image, TouchableOpacity, FlatList, SafeAreaView, RefreshControl, Alert, StatusBar, Platform } from 'react-native'
-import { SignOutButton } from '../../components/SignOutButton'
 import { Ionicons } from '@expo/vector-icons'
 import PostList from '../../components/PostList'
 import SvgLogo from '../../components/SvgLogo'
 import DeveloperInfoDialog from '../../components/DeveloperInfoDialog'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import AppSettingsMenu from '../ui/AppSettingsMenu'
 
 // Tipul datelor pentru un post în feed
 interface FeedItem {
@@ -22,6 +22,7 @@ export default function HomePage() {
   const [refreshing, setRefreshing] = useState(false)
   const postListRef = useRef<any>(null)
   const [developerInfoVisible, setDeveloperInfoVisible] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   useEffect(() => {
     // Populăm feed-ul doar cu PostList
@@ -30,17 +31,10 @@ export default function HomePage() {
     ]);
   }, []);
 
-  // Funcția care se declanșează când un PostList a terminat de reîncărcat datele
-  const handlePostsRefreshed = useCallback(() => {
-    console.log('Datele din PostList au fost reîmprospătate')
-  }, [])
-
-  // Funcție pentru a reîncărca toate datele din aplicație, inclusiv datele utilizatorului
   const onRefresh = useCallback(async () => {
     console.log('Începe reîmprospătarea tuturor datelor...')
     setRefreshing(true)
     
-    // 1. Reîncărcăm datele utilizatorului de la Clerk pentru a actualiza poza de profil
     if (isSignedIn && user) {
       try {
         await user.reload();
@@ -64,27 +58,10 @@ export default function HomePage() {
     }, 1000);
   }, [isSignedIn, user])
 
-  // Funcție pentru a renderiza diferite tipuri de conținut în feed
-  const renderFeedItem = ({ item }: { item: FeedItem }) => {
-    switch (item.type) {
-      case 'dbdata':
-        return (
-          <View style={styles.dbDataContainer}>
-            <Text style={styles.dbDataTitle}>Postari acasa</Text>
-            <PostList 
-              key={item.id} // Important pentru a forța re-renderarea
-              onRefreshTriggered={handlePostsRefreshed}
-              ref={postListRef}
-            />
-          </View>
-        )
-      
-      default:
-        return null
-    }
-  }
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
 
-  // Header pentru feed
   const renderHeader = () => (
     <View style={styles.header}>
       <View style={styles.leftSection}>
@@ -129,18 +106,32 @@ export default function HomePage() {
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.headerButton}
-            onPress={() => {
-              console.log('Pagina de explore trebuie configurată');
-              Alert.alert('Informație', 'Această pagină nu este încă configurată.');
-            }}
+            onPress={toggleMenu}
           >
             <Ionicons name="settings-outline" size={24} color="#333" />
           </TouchableOpacity>
-          <SignOutButton />
         </View>
       </View>
     </View>
   )
+
+  const renderFeedItem = ({ item }: { item: FeedItem }) => {
+    switch (item.type) {
+      case 'dbdata':
+        return (
+          <View style={styles.dbDataContainer}>
+            <Text style={styles.dbDataTitle}>Postari acasa</Text>
+            <PostList 
+              key={item.id}
+              ref={postListRef}
+            />
+          </View>
+        )
+      
+      default:
+        return null
+    }
+  }
 
   return (
     <>
@@ -217,6 +208,10 @@ export default function HomePage() {
             <Text style={styles.navText}>Profil</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Side Menu refactorizat pentru a folosi AppSettingsMenu */}
+        <AppSettingsMenu isVisible={isMenuOpen} onClose={toggleMenu} />
+
       </SafeAreaView>
     </>
   )
@@ -260,7 +255,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 30,
+    marginRight: Platform.OS === 'ios' ? 0 : 30,
   },
   rightSection: {
     flex: 1,
@@ -287,12 +282,10 @@ const styles = StyleSheet.create({
   buttonGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    zIndex: 25,
   },
   headerButton: {
     padding: 8,
     marginLeft: 12,
-    zIndex: 30,
   },
   dbDataContainer: {
     backgroundColor: '#f9f9f9',
@@ -309,13 +302,15 @@ const styles = StyleSheet.create({
   bottomNav: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    padding: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 5,
     borderTopWidth: 1,
     borderTopColor: '#eee',
     backgroundColor: '#fff',
   },
   navItem: {
     alignItems: 'center',
+    paddingHorizontal: 5,
   },
   navText: {
     fontSize: 12,
