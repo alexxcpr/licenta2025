@@ -72,7 +72,11 @@ const PostHeader = ({
             style={styles.avatar} 
           />
           <View style={styles.userNameTime}>
-            <Text style={styles.username}>{postUser.username || 'Utilizator'}</Text>
+            <Text style={styles.username}>
+              {postUser.username && postUser.username.length > 20 
+                ? postUser.username.substring(0, 20) + '...' 
+                : postUser.username || 'Utilizator'}
+            </Text>
             <Text style={styles.timeAgo}>{formatTimeAgo(dateCreated)}</Text>
           </View>
         </TouchableOpacity>

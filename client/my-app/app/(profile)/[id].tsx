@@ -20,6 +20,7 @@ import { getApiUrl } from '../../config/backend';
 import AppSettingsMenu from '../../app/ui/postari/AppSettingsMenu';
 import { PanGestureHandler, GestureHandlerRootView } from 'react-native-gesture-handler';
 import FullProfilePage from '../ui/profile/FullProfilePage';
+import BottomNavigation from '../ui/navigation/BottomNavigation';
 
 // Constante și praguri pentru gesturi
 const SWIPE_THRESHOLD = 80;
@@ -72,6 +73,7 @@ const AnimatedProfileContent: React.FC<AnimatedProfileContentProps> = React.memo
     postCount: profileData.postCount,
     connectionCount: profileData.connectionCount,
     isOwnProfile: isOwnProfile,
+    isCurrentUserProfile: isOwnProfile,
     refreshing: refreshing,
     onRefresh: handleRefresh,
     onEditPress: openEditModal,
@@ -81,6 +83,10 @@ const AnimatedProfileContent: React.FC<AnimatedProfileContentProps> = React.memo
     currentUserId: currentUser?.id
   });
 });
+
+// Creăm un cache global pentru datele profilului
+const profileCache = new Map<string, { data: ProfileData, timestamp: number }>();
+const CACHE_EXPIRY_TIME = 5 * 60 * 1000; // 5 minute
 
 export default function DynamicProfileScreen() {
   const router = useRouter();
@@ -92,6 +98,7 @@ export default function DynamicProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [forceRefresh, setForceRefresh] = useState(false);
 
   // State pentru meniul de setări
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -117,7 +124,7 @@ export default function DynamicProfileScreen() {
   }, [currentUser?.id, id]);
 
   // Înfășurăm loadProfile în useCallback
-  const loadProfile = useCallback(async () => {
+  const loadProfile = useCallback(async (forceFetch = false) => {
     if (!id) {
       setLoading(false);
       setProfileData(null);
@@ -125,10 +132,23 @@ export default function DynamicProfileScreen() {
       return;
     }
 
+    const cleanId = String(id).trim();
+    
+    // Verificăm dacă datele sunt în cache și nu au expirat, și nu s-a solicitat refresh
+    const cachedData = profileCache.get(cleanId);
+    const now = Date.now();
+    
+    if (!forceFetch && cachedData && (now - cachedData.timestamp < CACHE_EXPIRY_TIME)) {
+      console.log("Folosind datele din cache pentru profilul", cleanId);
+      setProfileData(cachedData.data);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     setLoading(true); 
     setRefreshing(true); 
     try {
-      const cleanId = String(id).trim();      
       const response = await fetch(getApiUrl(`/users/profile/${cleanId}`), {
         headers: {
           'ngrok-skip-browser-warning': 'true',
@@ -148,6 +168,12 @@ export default function DynamicProfileScreen() {
       const data = await response.json();
       
       if (data.status === 'success') {
+        // Salvăm datele în cache
+        profileCache.set(cleanId, {
+          data: data.data,
+          timestamp: now
+        });
+        
         setProfileData(data.data);
       } else {
         console.error('API a returnat eroare:', data);
@@ -170,17 +196,25 @@ export default function DynamicProfileScreen() {
       translateX.setValue(0);
       scaleX.setValue(1);
       setBgColor('#ffffff');
+      
+      // La reîncărcarea paginii, verificăm dacă avem datele în cache
+      if (id) {
+        loadProfile(forceRefresh);
+        setForceRefresh(false); // Resetăm flag-ul
+      }
     });
 
     return unsubscribe;
-  }, [navigation, translateX, scaleX]);
+  }, [navigation, translateX, scaleX, id, loadProfile, forceRefresh]);
 
+  // Încărcăm profilul doar prima dată
   useEffect(() => {
-    loadProfile();
+    loadProfile(false);
   }, [loadProfile]);
 
   const handleRefresh = useCallback(async () => {
-    await loadProfile();
+    // La refresh explicit, forțăm reîncărcarea datelor
+    await loadProfile(true);
   }, [loadProfile]);
 
   const openEditModal = useCallback(() => {
@@ -415,6 +449,9 @@ export default function DynamicProfileScreen() {
           >
             {renderContent()}
           </Animated.View>
+          
+          {/* Bottom Navigation */}
+          <BottomNavigation activePage="profile" />
         </View>
       ) : (
         <View style={[styles.container, { backgroundColor: bgColor }]}>
@@ -436,13 +473,20 @@ export default function DynamicProfileScreen() {
               {renderContent()}
             </Animated.View>
           </PanGestureHandler>
+          
+          {/* Bottom Navigation */}
+          <BottomNavigation activePage="profile" />
         </View>
       )}
       
       {isOwnProfile && (
         <EditProfileModal
           visible={editModalVisible}
-          onClose={() => setEditModalVisible(false)}
+          onClose={() => {
+            setEditModalVisible(false);
+            // Marcare că trebuie reîncărcat profilul la următorul focus
+            setForceRefresh(true);
+          }}
           user={currentUser}
           profile={profileData.user}
           loadProfile={loadProfile}

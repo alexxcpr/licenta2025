@@ -16,4 +16,4 @@ export interface Post {
   is_published: boolean;
   image_url: string | null;
   id_user: string;
-} 
+}

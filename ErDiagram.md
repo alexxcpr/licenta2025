@@ -135,4 +135,25 @@ erDiagram
 
     GROUP ||--o{ GROUP_POST : "contine"
     POST ||--o{ GROUP_POST : "apartine"
+
+    CONNECTION_REQUEST {
+        PKEY id_connection_request
+        FKEY id_user_sender
+        FKEY id_user_receiver
+        VARCHAR(20) status
+        TIMESTAMPTZ date_created
+        TIMESTAMPTZ date_updated
+    }
+    USER ||--o{ CONNECTION_REQUEST : "trimite cerere"
+    USER ||--o{ CONNECTION_REQUEST : "primeste cerere"
+
+    CONNECTION {
+        PKEY id_connection
+        FKEY id_user_1
+        FKEY id_user_2
+        TIMESTAMPTZ date_created
+        TIMESTAMPTZ date_updated
+    }
+    USER ||--o{ CONNECTION : "are conexiune cu"
+    USER ||--o{ CONNECTION : "are conexiune cu"
 ```

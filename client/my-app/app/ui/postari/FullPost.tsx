@@ -63,22 +63,10 @@ const FullPost = ({
   onOptionsPress,
   onPostPress,
   onUserPress,
-  // Nu mai folosim isLiked și isSaved ca sursă principală de adevăr aici
-  // isLiked: initialIsLiked, 
-  // isSaved: initialIsSaved 
 }: FullPostProps) => {
   
   const [internalIsLiked, setInternalIsLiked] = useState(false); // Inițializare cu false
   const [internalIsSaved, setInternalIsSaved] = useState(false); // Inițializare cu false
-
-  // Eliminăm useEffect-urile care sincronizau cu props-urile isLiked/isSaved
-  // useEffect(() => {
-  //   setInternalIsLiked(isLiked);
-  // }, [isLiked]);
-  //
-  // useEffect(() => {
-  //   setInternalIsSaved(isSaved);
-  // }, [isSaved]);
 
   useEffect(() => {
     const fetchLikeAndSaveStatus = async () => {

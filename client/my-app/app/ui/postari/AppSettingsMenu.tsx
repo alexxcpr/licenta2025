@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -17,6 +17,7 @@ import {
   PanGestureHandler, 
   GestureHandlerRootView 
 } from 'react-native-gesture-handler';
+import ConnectionRequestButton from '../conexiuni/ConnectionRequestButton';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 10; // Pragul pentru a considera swipe-ul valid
@@ -61,13 +62,64 @@ const fetchUserRolesFromSupabase = async (userId: string): Promise<string[]> => 
   }
 };
 
+// Componenta pentru numărul de cereri de conexiune - stare globală
+const useConnectionRequestCount = () => {
+  const { user } = useUser();
+  const [requestCount, setRequestCount] = useState(0);
+
+  // Funcția pentru a încărca numărul de cereri de conexiune
+  const loadRequestCount = useCallback(async () => {
+    if (!user?.id) return 0;
+    
+    try {
+      const { count, error } = await supabase
+        .from('connection_request')
+        .select('*', { count: 'exact', head: true })
+        .eq('id_user_receiver', user.id);
+      
+      if (error) {
+        console.error('Eroare la obținerea numărului de cereri:', error);
+        return 0;
+      }
+      
+      setRequestCount(count || 0);
+      return count || 0;
+    } catch (error) {
+      console.error('Eroare la obținerea numărului de cereri:', error);
+      return 0;
+    }
+  }, [user?.id]);
+
+  // Încărcăm numărul de cereri la montarea hook-ului
+  useEffect(() => {
+    loadRequestCount();
+    
+    // Opțional: Setăm un interval pentru a actualiza periodic numărul de cereri
+    const interval = setInterval(loadRequestCount, 60000); // Actualizează la fiecare minut
+    
+    return () => clearInterval(interval);
+  }, [loadRequestCount]);
+
+  return { requestCount, loadRequestCount };
+};
+
 const AppSettingsMenu: React.FC<AppSettingsMenuProps> = ({ isVisible, onClose }) => {
   const { user, isSignedIn } = useUser();
   const [userRoles, setUserRoles] = useState<string[]>([]);
+  const { requestCount } = useConnectionRequestCount();
   
   // Animație pentru meniul lateral
   const translateX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
+
+  // Folosim useMemo pentru a evita rerandarea componentelor la deschiderea meniului
+  const ConnectionRequestButtonMemo = useMemo(() => (
+    <ConnectionRequestButton onClose={onClose} />
+  ), [onClose]);
+
+  // Exportăm numărul de cereri pentru a fi folosit în afara componentei
+  // pentru a afișa bulinuța notificare lângă iconul de setări
+  const getRequestCount = () => requestCount;
 
   // Gestionează montarea/demontarea animată
   useEffect(() => {
@@ -175,6 +227,20 @@ const AppSettingsMenu: React.FC<AppSettingsMenuProps> = ({ isVisible, onClose })
             <View style={styles.handleBar} />
 
             <View style={styles.sideMenuContent}>
+              {/* Indicator notificare pentru meniul de setări */}
+              <View style={styles.settingsHeaderContainer}>
+                <Text style={styles.settingsHeaderText}>Setări și notificări</Text>
+                {requestCount > 0 && (
+                  <View style={styles.notificationBadge}>
+                    <Text style={styles.notificationBadgeText}>{requestCount}</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Buton cereri conexiune */}
+              {ConnectionRequestButtonMemo}
+              
+              {/* Opțiuni bazate pe rol */}
               {userRoles.includes('Moderator') && (
                 <TouchableOpacity
                   style={styles.menuItem}
@@ -273,6 +339,34 @@ const styles = StyleSheet.create({
   sideMenuContent: {
     flex: 1,
   },
+  settingsHeaderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  settingsHeaderText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  notificationBadge: {
+    backgroundColor: '#007AFF',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  notificationBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -304,4 +398,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AppSettingsMenu; 
+export default AppSettingsMenu;
+export { useConnectionRequestCount }; 

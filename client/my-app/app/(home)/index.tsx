@@ -1,5 +1,5 @@
 import { useUser } from '@clerk/clerk-expo'
-import { useRouter } from 'expo-router'
+import { useRouter, useFocusEffect } from 'expo-router'
 import { Text, View, StyleSheet, Image, TouchableOpacity, FlatList, SafeAreaView, RefreshControl, Alert, StatusBar, Platform } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import PostList from '../../components/PostList'
@@ -7,6 +7,7 @@ import SvgLogo from '../../components/SvgLogo'
 import DeveloperInfoDialog from '../../components/DeveloperInfoDialog'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import AppSettingsMenu from '../../app/ui/postari/AppSettingsMenu'
+import BottomNavigation from '../../app/ui/navigation/BottomNavigation'
 
 // Tipul datelor pentru un post în feed
 interface FeedItem {
@@ -14,6 +15,10 @@ interface FeedItem {
   type: 'story' | 'post' | 'dbdata';
   content?: React.ReactNode;
 }
+
+// Cache pentru datele din feed
+const feedCache = new Map<string, { data: FeedItem[], timestamp: number }>();
+const CACHE_EXPIRY_TIME = 5 * 60 * 1000; // 5 minute
 
 export default function HomePage() {
   const { user, isLoaded, isSignedIn } = useUser()
@@ -23,17 +28,74 @@ export default function HomePage() {
   const postListRef = useRef<any>(null)
   const [developerInfoVisible, setDeveloperInfoVisible] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [forceRefresh, setForceRefresh] = useState(false)
+  const initialLoadDoneRef = useRef(false) // Flag pentru încărcarea inițială
+  
+  // Funcție pentru a încărca feedul cu verificare cache
+  const loadFeedData = useCallback(async (forceFetch = false) => {
+    const cacheKey = 'home-feed' + (user?.id || 'guest');
+    const now = Date.now();
+    
+    // Verificăm dacă datele sunt în cache și nu au expirat
+    const cachedData = feedCache.get(cacheKey);
+    
+    if (!forceFetch && cachedData && (now - cachedData.timestamp < CACHE_EXPIRY_TIME)) {
+      console.log("Folosim datele din cache pentru feed");
+      setFeedItems(cachedData.data);
+      return;
+    }
+    
+    console.log('Încărcăm date noi pentru feed...');
+    setRefreshing(true);
+    
+    try {
+      // În acest caz, nu avem o cerere API reală, doar simulăm încărcarea
+      // și generăm o listă de elemente pentru feed
+      const newFeedItems: FeedItem[] = [
+        { id: 'db-data-' + now, type: 'dbdata' }
+      ];
+      
+      // Salvăm datele în cache
+      feedCache.set(cacheKey, {
+        data: newFeedItems,
+        timestamp: now
+      });
+      
+      setFeedItems(newFeedItems);
+    } catch (error) {
+      console.error('Eroare la încărcarea datelor feed:', error);
+      Alert.alert('Eroare', 'Nu s-au putut încărca postările. Încercați din nou.');
+    } finally {
+      setRefreshing(false);
+    }
+  }, [user?.id]);
 
-  useEffect(() => {
-    // Populăm feed-ul doar cu PostList
-    setFeedItems([
-      { id: 'db-data', type: 'dbdata' }
-    ]);
-  }, []);
+  // Folosim useFocusEffect pentru a ne asigura că nu reîncărcăm datele la fiecare focus
+  // decât dacă este necesar (forceRefresh)
+  useFocusEffect(
+    useCallback(() => {
+      // Verificăm dacă este prima încărcare sau dacă forțăm refresh-ul
+      if (!initialLoadDoneRef.current || forceRefresh) {
+        console.log('Încărcăm date la focus (inițial sau forțat)');
+        loadFeedData(forceRefresh);
+        initialLoadDoneRef.current = true;
+        if (forceRefresh) {
+          setForceRefresh(false);
+        }
+      } else {
+        console.log('Screen refocat, folosim datele din cache');
+      }
+    }, [loadFeedData, forceRefresh])
+  );
+  
+  // Efectul nu mai este necesar deoarece folosim useFocusEffect
+  // useEffect(() => {
+  //   loadFeedData(false);
+  // }, [loadFeedData]);
 
+  // Funcție pentru a actualiza datele
   const onRefresh = useCallback(async () => {
     console.log('Începe reîmprospătarea tuturor datelor...')
-    setRefreshing(true)
     
     if (isSignedIn && user) {
       try {
@@ -44,19 +106,9 @@ export default function HomePage() {
       }
     }
     
-    // 2. Generăm noi ID-uri pentru toate elementele din feed pentru a forța re-renderarea
-    const newFeedItems: FeedItem[] = [
-      { id: 'db-data-' + new Date().getTime(), type: 'dbdata' }
-    ];
-    
-    setFeedItems(newFeedItems);
-    
-    // 3. Simulăm sfârșitul reîmprospatării după o scurtă întârziere
-    setTimeout(() => {
-      setRefreshing(false);
-      console.log('Reîmprospătare completă');
-    }, 1000);
-  }, [isSignedIn, user])
+    // Forțăm reîncărcarea datelor din feed
+    await loadFeedData(true);
+  }, [isSignedIn, user, loadFeedData])
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -144,69 +196,30 @@ export default function HomePage() {
         />
         
         {/* Main Feed with Continuous Scroll and Pull to Refresh */}
-        <FlatList
-          data={feedItems}
-          keyExtractor={(item) => item.id}
-          renderItem={renderFeedItem}
-          ListHeaderComponent={renderHeader}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.feedList}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={['#007AFF']} // Culoarea spinner-ului pe Android
-              tintColor={'#007AFF'} // Culoarea spinner-ului pe iOS
-              title={'Se reîncarcă...'} // Text afișat pe iOS sub spinner
-              titleColor={'#666'} // Culoarea textului pe iOS
-            />
-          }
-        />
+        <View style={styles.mainContent}>
+          <FlatList
+            data={feedItems}
+            keyExtractor={(item) => item.id}
+            renderItem={renderFeedItem}
+            ListHeaderComponent={renderHeader}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.feedList}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#007AFF']} // Culoarea spinner-ului pe Android
+                tintColor={'#007AFF'} // Culoarea spinner-ului pe iOS
+                title={'Se reîncarcă...'} // Text afișat pe iOS sub spinner
+                titleColor={'#666'} // Culoarea textului pe iOS
+              />
+            }
+          />
+        </View>
 
-        {/* Bottom Navigation */}
-        <View style={styles.bottomNav}>
-          <TouchableOpacity style={styles.navItem}>
-            <Ionicons name="home" size={24} color="#007AFF" />
-            <Text style={styles.navTextActive}>Acasă</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => {
-              console.log('Pagina de explore trebuie configurată');
-              Alert.alert('Informație', 'Această pagină nu este încă configurată.');
-            }}
-          >
-            <Ionicons name="compass-outline" size={24} color="#666" />
-            <Text style={styles.navText}>Explorează</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => router.push('/(home)/create-post')}
-          >
-            <Ionicons name="add-circle-outline" size={24} color="#666" />
-            <Text style={styles.navText}>Postează</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => {
-              console.log('Pagina de notificări trebuie configurată');
-              Alert.alert('Informație', 'Această pagină nu este încă configurată.');
-            }}
-          >
-            <Ionicons name="notifications-outline" size={24} color="#666" />
-            <Text style={styles.navText}>Notificări</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => {
-              if (user?.id) {
-                router.push(`/(profile)/${user.id}` as any);
-              }
-            }}
-          >
-            <Ionicons name="person-outline" size={24} color="#666" />
-            <Text style={styles.navText}>Profil</Text>
-          </TouchableOpacity>
+        {/* Bottom Navigation utilizând componenta reutilizabilă */}
+        <View style={styles.bottomNavContainer}>
+          <BottomNavigation activePage="home" />
         </View>
 
         {/* Side Menu refactorizat pentru a folosi AppSettingsMenu */}
@@ -220,10 +233,23 @@ export default function HomePage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff', // Schimbat din #f5f5f5 pentru a elimina spațiul gri
+  },
+  mainContent: {
+    flex: 1,
   },
   feedList: {
     paddingBottom: 10,
+  },
+  bottomNavContainer: {
+    width: '100%',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
   },
   header: {
     flexDirection: 'row',
@@ -288,8 +314,9 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   dbDataContainer: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#fff', // Schimbat din #f9f9f9 pentru consistență
     marginTop: 10,
+    paddingBottom: 80, // Adăugăm padding pentru a permite scroll sub navbar
   },
   dbDataTitle: {
     fontSize: 18,
@@ -298,28 +325,5 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginLeft: 15,
     color: '#333',
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 10,
-    paddingHorizontal: 5,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    backgroundColor: '#fff',
-  },
-  navItem: {
-    alignItems: 'center',
-    paddingHorizontal: 5,
-  },
-  navText: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 5,
-  },
-  navTextActive: {
-    fontSize: 12,
-    color: '#007AFF',
-    marginTop: 5,
   },
 })

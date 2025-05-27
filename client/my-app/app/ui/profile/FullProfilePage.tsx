@@ -26,6 +26,7 @@ interface FullProfilePageProps {
   onGoBack: () => void;
   onSettingsPress: () => void;
   currentUserId?: string;
+  isCurrentUserProfile: boolean;
 }
 
 const FullProfilePage: React.FC<FullProfilePageProps> = ({
@@ -41,7 +42,8 @@ const FullProfilePage: React.FC<FullProfilePageProps> = ({
   onPostPress,
   onGoBack,
   onSettingsPress,
-  currentUserId
+  currentUserId,
+  isCurrentUserProfile
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [savedPosts, setSavedPosts] = useState<Post[]>([]);
@@ -113,6 +115,8 @@ const FullProfilePage: React.FC<FullProfilePageProps> = ({
         connectionCount={connectionCount}
         onEditPress={onEditPress}
         isOwnProfile={isOwnProfile}
+        profileUserId={profile?.id_user}
+        isCurrentUserProfile={isCurrentUserProfile}
       />
       <ProfileActionButtons 
         viewMode={viewMode} 
