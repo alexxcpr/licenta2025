@@ -21,6 +21,9 @@ Dezvoltarea unei platforme de rețea socială dedicată profesioniștilor dintr-
 - Posibilitatea de schimbare a descrierii contului
 
 ## 📋 Funcționalități în curs de implementare
+- Pagina setări
+- Flux stergere postare
+- Flux raportare postare
 
 ### 📝 Pagina de profil
 - Număr conexiuni:
@@ -30,6 +33,23 @@ Dezvoltarea unei platforme de rețea socială dedicată profesioniștilor dintr-
 
 ### 📝 Pagina setări
 - În curs de dezvoltare
+
+### 📝 Flux stergere postare
+
+### 📝 Stergere comentariu propriu / de catre admin
+
+### 📝 Stergere conexiune (cont)
+
+### 📝 Flux raportare postare
+- se raporteaza postarea si ajunge in dashboard moderare
+- se poate sterge postarea sau se poate sterge raportarea
+- se poate sterge contul utilizatorului care a postat
+
+### 📝 Raportare comentariu (OPTIONAL)
+- se raporteaza comentariul si ajunge in dashboard moderare
+- moderatorul decide sa stearga comentariul sau nu
+
+### 📝 Raportare conexiune (cont)
 
 ### 📝 Chat în timp real
 - Chat individual

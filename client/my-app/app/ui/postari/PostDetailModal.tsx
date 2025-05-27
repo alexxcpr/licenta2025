@@ -22,6 +22,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../utils/supabase';
 import { PanGestureHandler, GestureHandlerRootView } from 'react-native-gesture-handler';
 import PostOptionsDialog from '../../../components/PostOptionsDialog';
+import PostHeader from './PostHeader';
+import PostContent from './PostContent';
+import PostActions from './PostActions';
 
 // Constante pentru gesturi
 const SWIPE_THRESHOLD = 80;
@@ -308,6 +311,12 @@ export default function PostDetailModal({
     console.log('Buton send apăsat pentru postarea', post?.id_post);
   };
 
+  const handleComment = () => {
+    // Focusăm pe câmpul de adăugare comentariu
+    // Putem adăuga o referință la TextInput dacă dorim
+    console.log('Buton comment apăsat pentru postarea', post?.id_post);
+  };
+
   const handleDelete = async () => {
     if (!post || !currentUserId || post.id_user !== currentUserId) return;
     
@@ -421,55 +430,33 @@ export default function PostDetailModal({
                 </View>
 
                 <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                  {/* Informații utilizator */}
-                  <View style={styles.userInfo}>
-                    <Image 
-                      source={{ uri: postUser.avatar_url || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png' }} 
-                      style={styles.avatar} 
-                    />
-                    <Text style={styles.username}>{postUser.username}</Text>
-                  </View>
+                  {/* Folosim componenta PostHeader pentru informațiile utilizatorului și conținutul textual */}
+                  <PostHeader 
+                    postUser={postUser}
+                    dateCreated={post.date_created}
+                    onOptionsPress={toggleActionsDialog}
+                    onUserPress={() => console.log('Navigare la profilul utilizatorului', postUser.id)}
+                    content={post.content}
+                  />
 
-                  {/* Imaginea postării (dacă există) */}
-                  {post.image_url && (
-                    <Image 
-                      source={{ uri: post.image_url }} 
-                      style={[styles.postImage, { height: 600, backgroundColor: 'transparent' }]}
-                      onError={(e) => {
-                        console.error(`[PostDetailModal] Eroare la încărcarea imaginii postării. URL încercat: ${post.image_url}`);
-                        console.error('[PostDetailModal] Detalii eroare nativă:', e.nativeEvent.error);
-                      }}
-                      onLayout={(event) => {
-                        const { width, height } = event.nativeEvent.layout;
-                        console.log(`[PostDetailModal] Layout imagine: width=${width}, height=${height}`);
-                      }}
-                    />
-                  )}
+                  {/* Folosim componenta PostContent pentru imaginea postării */}
+                  <PostContent 
+                    imageUrl={post.image_url}
+                    onPress={() => console.log('Imagine apăsată')}
+                  />
 
-                  {/* Conținutul postării */}
-                  <View style={styles.postContentContainer}>
-                    <Text style={styles.postText}>{post.content}</Text>
-                    <Text style={styles.postDate}>{formatTimeAgo(post.date_created)}</Text>
-                  </View>
+                  {/* Folosim componenta PostActions pentru butoanele de acțiune */}
+                  <PostActions 
+                    postId={post.id_post}
+                    isLiked={liked}
+                    isSaved={saved}
+                    onLike={handleLike}
+                    onComment={handleComment}
+                    onSend={handleSend}
+                    onSave={handleSave}
+                  />
 
-                  {/* Acțiuni postare */}
-                  <View style={styles.actionsContainer}>
-                    <TouchableOpacity onPress={handleLike} style={styles.actionButton}>
-                      <Ionicons name={liked ? "heart" : "heart-outline"} size={28} color={liked ? "#007AFF" : "#333"} />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => console.log("Comment action")} style={styles.actionButton}>
-                      <Ionicons name="chatbubble-outline" size={28} color="#333" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={handleSend} style={styles.actionButton}>
-                      <Ionicons name="paper-plane-outline" size={28} color="#333" />
-                    </TouchableOpacity>
-                    <View style={{ flex: 1 }} /> 
-                    <TouchableOpacity onPress={handleSave} style={styles.actionButton}>
-                      <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={28} color={saved ? "#007AFF" : "#333"} />
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Secțiune Comentarii */}
+                  {/* Secțiune Comentarii - Păstrăm implementarea specifică modalului */}
                   <View style={styles.commentsSection}>
                     <Text style={styles.commentsTitle}>
                       Comentarii ({comments.length})

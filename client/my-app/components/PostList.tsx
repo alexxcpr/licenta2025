@@ -2,11 +2,12 @@ import React, { useEffect, useState, useCallback, forwardRef, useImperativeHandl
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, Platform, Image, Dimensions, TouchableOpacity, Alert, SafeAreaView, Pressable, Modal } from 'react-native';
 import { supabase } from '../utils/supabase';
 import { Ionicons } from '@expo/vector-icons';
-import PostDetailModal from '../app/(home)/components/PostDetailModal';
+import PostDetailModal from '../app/ui/postari/PostDetailModal';
 import PostOptionsDialog from './PostOptionsDialog';
 import { useUser } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import { getApiUrl } from '../config/backend';
+import FullPost from '../app/ui/postari/FullPost';
 
 // Definim interfața pentru datele din tabelul post conform structurii din Supabase
 interface PostData {
@@ -331,33 +332,6 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
     );
   }
 
-  // Funcția pentru a formata timpul scurs de la postare
-  const formatTimeAgo = (dateString: string) => {
-    try {
-      const now = new Date();
-      const date = new Date(dateString);
-      const diffMs = now.getTime() - date.getTime();
-      
-      const diffSeconds = Math.floor(diffMs / 1000);
-      const diffMinutes = Math.floor(diffSeconds / 60);
-      const diffHours = Math.floor(diffMinutes / 60);
-      const diffDays = Math.floor(diffHours / 24);
-      
-      if (diffDays > 0) {
-        return `acum ${diffDays} ${diffDays === 1 ? 'zi' : 'zile'}`;
-      } else if (diffHours > 0) {
-        return `acum ${diffHours} ${diffHours === 1 ? 'oră' : 'ore'}`;
-      } else if (diffMinutes > 0) {
-        return `acum ${diffMinutes} ${diffMinutes === 1 ? 'minut' : 'minute'}`;
-      } else {
-        return `acum ${diffSeconds} ${diffSeconds === 1 ? 'secundă' : 'secunde'}`;
-      }
-    } catch (error) {
-      console.error('Eroare la formatarea timpului:', error);
-      return 'recent';
-    }
-  };
-
   // Funcția pentru a deschide meniul de opțiuni
   const openOptionsMenu = (postId: number) => {
     console.log('Apăsat buton opțiuni pentru postId:', postId);
@@ -522,6 +496,14 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
     router.push(`/(profile)/${userId}` as any);
   };
 
+  // Funcție pentru deschiderea comentariilor
+  const handleComment = (postId: number) => {
+    const post = posts.find(p => p.id_post === postId);
+    if (post) {
+      openPostDetail(post);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>        
@@ -544,177 +526,35 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
             data={posts}
             keyExtractor={(item) => item.id_post.toString()}
             renderItem={({ item }) => {
-              // Aplicăm stilul condiționat pentru web direct aici
-              let webStyles: import('react-native').ViewStyle | undefined;
-              if (Platform.OS === 'web') {
-                webStyles = {
-                  maxWidth: screenWidth * 0.7, 
-                  width: '100%', 
-                  alignSelf: 'center', 
-                  borderWidth: 1,
-                  borderColor: '#dbdbdb',
-                  borderRadius: 8,
-                  marginTop: 8,
-                  marginBottom: 8,
-                };
-              }
+              // Pregătim comentariile și utilizatorul pentru postare
+              const postComments = comments[item.id_post] || [];
+              const postUser = users[item.id_user] || { 
+                id: item.id_user, 
+                username: 'Utilizator necunoscut'
+              };
 
-              const postContainerStyles = [
-                styles.postContainer,
-                webStyles
-              ];
-
+              // Adăugăm informații despre utilizator în comentarii
+              const enrichedComments = postComments.map(comment => ({
+                ...comment,
+                user: users[comment.id_user]
+              }));
+              
               return (
-                <View style={postContainerStyles as import('react-native').StyleProp<import('react-native').ViewStyle>}>
-                  {/* Header postare */}
-                  <View style={styles.postHeader}>
-                    <TouchableOpacity 
-                      style={styles.userInfo}
-                      onPress={() => navigateToProfile(item.id_user)}
-                      activeOpacity={0.7}
-                    >
-                      <Image 
-                        source={{ 
-                          uri: users[item.id_user]?.avatar_url || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png'
-                        }} 
-                        style={styles.avatar} 
-                      />
-                      <View style={styles.userNameTime}>
-                        <Text style={styles.username}>{users[item.id_user]?.username || 'Utilizator'}</Text>
-                        <Text style={styles.timeAgo}>{formatTimeAgo(item.date_created)}</Text>
-                      </View>
-                    </TouchableOpacity>
-                    <Pressable 
-                      style={({ pressed }) => [
-                        styles.optionsButton,
-                        pressed && styles.buttonPressed
-                      ]}
-                      android_ripple={{ color: '#ddd', borderless: true }}
-                      onPress={() => openOptionsMenu(item.id_post)}
-                    >
-                      <Ionicons name="ellipsis-horizontal" size={24} color="#666" />
-                    </Pressable>
-                  </View>
-
-                  {/* Conținutul postării - clickabil */}
-                  <TouchableOpacity 
-                    onPress={() => openPostDetail(item)}
-                    activeOpacity={0.9}
-                  >
-                    <Text style={styles.contentText}>{item.content}</Text>
-
-                    {/* Imaginea postării - clickabilă */}
-                    {item.image_url && (
-                      <View style={styles.imageContainer}>
-                        <Image 
-                          source={{ uri: item.image_url }} 
-                          style={styles.postImage} 
-                          resizeMode={Platform.OS === 'web' ? 'contain' : 'cover'}
-                        />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-
-                  {/* Butoane de acțiune */}
-                  <View style={styles.actionButtons}>
-                    <View style={styles.leftButtons}>
-                      <Pressable 
-                        onPress={() => {
-                          handleLike(item.id_post);
-                        }}
-                        android_ripple={{ color: '#ddd', borderless: true }}
-                        style={({ pressed }) => [
-                          styles.actionButton,
-                          pressed && styles.buttonPressed
-                        ]}
-                      >
-                        <Ionicons 
-                          name={likedPosts[item.id_post] ? "heart" : "heart-outline"} 
-                          size={24} 
-                          color={likedPosts[item.id_post] ? "#007AFF" : "#333"} 
-                        />
-                      </Pressable>
-                      <Pressable 
-                        onPress={() => {
-                          openPostDetail(item);
-                        }}
-                        android_ripple={{ color: '#ddd', borderless: true }}
-                        style={({ pressed }) => [
-                          styles.actionButton,
-                          pressed && styles.buttonPressed
-                        ]}
-                      >
-                        <Ionicons name="chatbubble-outline" size={24} color="#333" />
-                      </Pressable>
-                    </View>
-                    <View style={styles.rightButtons}>
-                      <Pressable 
-                        onPress={() => {
-                          handleSend(item.id_post);
-                        }}
-                        android_ripple={{ color: '#ddd', borderless: true }}
-                        style={({ pressed }) => [
-                          styles.actionButton,
-                          pressed && styles.buttonPressed
-                        ]}
-                      >
-                        <Ionicons name="paper-plane-outline" size={24} color="#333" />
-                      </Pressable>
-                      <Pressable 
-                        onPress={() => {
-                          handleSave(item.id_post);
-                        }}
-                        android_ripple={{ color: '#ddd', borderless: true }}
-                        style={({ pressed }) => [
-                          styles.actionButton,
-                          pressed && styles.buttonPressed
-                        ]}
-                      >
-                        <Ionicons 
-                          name={savedPosts[item.id_post] ? "bookmark" : "bookmark-outline"} 
-                          size={24} 
-                          color={savedPosts[item.id_post] ? "#6495ED" : "#333"} 
-                        />
-                      </Pressable>
-                    </View>
-                  </View>
-
-                  {/* Comentarii */}
-                  {comments[item.id_post] && comments[item.id_post].length > 0 ? (
-                    <View style={styles.commentsSection}>
-                      {comments[item.id_post].map(comment => {
-                        const username = users[comment.id_user]?.username;
-                        const displayName = (username && username.length > 20 ? username.substring(0, 20) + '..' : username) || 'Utilizator';
-                        return (
-                          <View key={comment.id_comment} style={styles.commentItem}>
-                            <TouchableOpacity onPress={() => navigateToProfile(comment.id_user)}>
-                              <Text style={styles.commentUsername}>
-                                {displayName}:
-                              </Text>
-                            </TouchableOpacity>
-                            <Text style={styles.commentContent}>{comment.content}</Text>
-                          </View>
-                        );
-                      })}
-                      {/* Link pentru a vedea toate comentariile */}
-                      {comments[item.id_post] && comments[item.id_post].length === 2 && (
-                        <Pressable
-                          style={({ pressed }) => [
-                            styles.viewAllCommentsButton,
-                            pressed && styles.linkPressed
-                          ]}
-                          onPress={() => openPostDetail(item)}
-                        >
-                          <Text style={styles.viewAllComments}>Vezi toate comentariile...</Text>
-                        </Pressable>
-                      )}
-                    </View>
-                  ) : (
-                    <TouchableOpacity onPress={() => openPostDetail(item)}>
-                      <Text style={styles.noComments}>Nu există comentarii pentru această postare</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
+                <FullPost 
+                  post={item}
+                  postUser={postUser}
+                  comments={enrichedComments}
+                  currentUserId={user?.id}
+                  onLike={handleLike}
+                  onSave={handleSave}
+                  onComment={handleComment}
+                  onSend={handleSend}
+                  onOptionsPress={openOptionsMenu}
+                  onPostPress={openPostDetail}
+                  onUserPress={navigateToProfile}
+                  // isLiked={!!likedPosts[item.id_post]}
+                  // isSaved={!!savedPosts[item.id_post]}
+                />
               );
             }}
             contentContainerStyle={styles.listContent}
@@ -828,127 +668,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-  postContainer: {
-    backgroundColor: '#fff',
-    // marginBottom: 8, // Mutat în stilul condiționat pentru web sau păstrat pentru mobil
-    // Stilurile specifice web vor fi adăugate dinamic în renderItem
-  },
-  postHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
-    backgroundColor: '#f0f0f0', // Culoare de fundal pentru a evita probleme de transparență pe iOS
-  },
-  userNameTime: {
-    flexDirection: 'column',
-  },
-  username: {
-    fontWeight: 'bold',
-    fontSize: 15,
-    color: '#333',
-  },
-  timeAgo: {
-    fontSize: 13,
-    color: '#888',
-    marginTop: 2,
-  },
-  optionsButton: {
-    padding: 8, // Adăugăm padding pentru a mări zona de atingere pe iOS
-  },
-  imageContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 0,
-    overflow: 'hidden',
-  },
-  postImage: {
-    height: isNative ? 300 : 320,
-    width: '100%',
-    borderRadius: 8,
-    backgroundColor: '#f0f0f0', // Culoare de fundal pentru a evita probleme de transparență pe iOS
-  },
-  contentText: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#333',
-    padding: 16,
-    paddingTop: 12,
-    marginHorizontal: 0,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 16,
-    paddingTop: 4,
-    paddingBottom: 8,
-    width: '100%',
-    marginHorizontal: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  leftButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  rightButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  actionButton: {
-    padding: 8,
-    marginHorizontal: 4,
-    borderRadius: 20,
-  },
-  buttonPressed: {
-    backgroundColor: '#f0f0f0',
-    opacity: 0.7,
-  },
-  commentsSection: {
-    padding: 16,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    marginHorizontal: 0,
-  },
-  commentItem: {
-    flexDirection: 'row',
-    marginBottom: 8,
-    flexWrap: 'wrap',
-  },
-  commentUsername: {
-    fontWeight: 'bold',
-    fontSize: 14,
-    marginRight: 6,
-    color: '#333',
-  },
-  commentContent: {
-    fontSize: 14,
-    color: '#333',
-    flex: 1,
-  },
-  viewAllComments: {
-    color: '#888',
-    fontSize: 14,
-    marginTop: 4,
-  },
-  noComments: {
-    fontSize: 14,
-    color: '#888',
-    padding: 12,
-    paddingTop: 10,
-    fontStyle: 'italic',
-  },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
@@ -981,14 +700,5 @@ const styles = StyleSheet.create({
   retryText: {
     color: 'white',
     fontWeight: 'bold',
-  },
-  viewAllCommentsButton: {
-    padding: 8,
-    borderRadius: 20,
-    marginTop: 4,
-  },
-  linkPressed: {
-    backgroundColor: '#f0f0f0',
-    opacity: 0.7,
   },
 }); 

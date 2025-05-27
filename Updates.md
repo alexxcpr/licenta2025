@@ -2,6 +2,23 @@
 
 ⬇️alpha -> 🔜beta -> 🔜release candidate(RC) -> 🔜versiune finala
 
+## alpha 01.0.4
+*IMPLEMENTARI NOI*
+- Functionalitate pentru butonul de listView pentru profil, acum postarile se vor afisa in lista (in loc de grid)
+- Functionalitate pentru butonul de bookmark pentru postari, vor fi afisate doar postarile salvate de user.
+- Butonul de bookmark pentru postari este disponibil doar pentru userul curent.
+- Functionalitate pentru butonul de like
+- Functionalitate pentru butonul de save
+
+*IMBUNATATIRI*
+- refactorizare componente pentru postari, componenta parinte: FullPost.tsx, componenta copil: PostHeader.tsx, PostContent.tsx, PostActions.tsx, PostComments.tsx. => modularitate, consistenta design si functionalitate
+- utilizare componenta refactorizata in pagina de home page si profil pentru consistenta
+- refactorizare componente pagina profil, componenta parinte: FullProfilePage.tsx, componenta copil: ProfileHeader.tsx, ProfileUserInfo.tsx, ProfileActionButtons.tsx, ProfileUserPosts.tsx, ProfileListViewPosts.tsx, ProfileSavedPosts.tsx. => modularitate, consistenta design si functionalitate
+- utilizare componenta refactorizata in pagina de profil pentru consistenta
+
+*BUG FIXES*
+- sters fisierul useUserProfile.ts si folderul hooks din (home) pentru ca nu se foloseau
+
 ## alpha 01.0.3
 *IMPLEMENTARI NOI*
 - adaugare roluri pentru utilizatori (Moderator, Admin)

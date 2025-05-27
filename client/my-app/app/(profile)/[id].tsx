@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  RefreshControl,
+  TouchableOpacity,
   SafeAreaView,
   StatusBar,
   ActivityIndicator,
@@ -13,17 +11,15 @@ import {
   Platform,
   Animated
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useUser } from '@clerk/clerk-expo';
 import EditProfileModal from './components/EditProfileModal';
-import ProfileHeader from './components/ProfileHeader';
-import UserPostsGrid from '../(home)/components/UserPostsGrid';
-import PostDetailModal from '../(home)/components/PostDetailModal';
+import PostDetailModal from '../ui/postari/PostDetailModal';
 import { Post, UserProfile } from '../../utils/types';
 import { getApiUrl } from '../../config/backend';
-import AppSettingsMenu from '../ui/AppSettingsMenu';
+import AppSettingsMenu from '../../app/ui/postari/AppSettingsMenu';
 import { PanGestureHandler, GestureHandlerRootView } from 'react-native-gesture-handler';
+import FullProfilePage from '../ui/profile/FullProfilePage';
 
 // Constante și praguri pentru gesturi
 const SWIPE_THRESHOLD = 80;
@@ -36,6 +32,55 @@ interface ProfileData {
   postCount: number;
   connectionCount: number;
 }
+
+// Interfața pentru props-urile AnimatedProfileContent
+interface AnimatedProfileContentProps {
+  translateX: Animated.Value;
+  scaleX: Animated.Value;
+  currentUser: any;
+  profileData: ProfileData;
+  isOwnProfile: boolean;
+  refreshing: boolean;
+  handleRefresh: () => Promise<void>;
+  openEditModal: () => void;
+  openPostDetail: (post: Post) => void;
+  goBack: () => void;
+  toggleProfileMenu: () => void;
+}
+
+// Separăm logica de animație într-o componentă dedicată
+const AnimatedProfileContent: React.FC<AnimatedProfileContentProps> = React.memo(({ 
+  translateX, 
+  scaleX, 
+  currentUser, 
+  profileData, 
+  isOwnProfile, 
+  refreshing, 
+  handleRefresh, 
+  openEditModal, 
+  openPostDetail, 
+  goBack, 
+  toggleProfileMenu 
+}) => {
+  if (!profileData || !profileData.user) return null;
+  
+  // Folosim React.createElement pentru a evita probleme cu reconcilierea React
+  return React.createElement(FullProfilePage, {
+    user: currentUser,
+    profile: profileData.user,
+    posts: profileData.posts,
+    postCount: profileData.postCount,
+    connectionCount: profileData.connectionCount,
+    isOwnProfile: isOwnProfile,
+    refreshing: refreshing,
+    onRefresh: handleRefresh,
+    onEditPress: openEditModal,
+    onPostPress: openPostDetail,
+    onGoBack: goBack,
+    onSettingsPress: toggleProfileMenu,
+    currentUserId: currentUser?.id
+  });
+});
 
 export default function DynamicProfileScreen() {
   const router = useRouter();
@@ -71,22 +116,18 @@ export default function DynamicProfileScreen() {
     return currentUserId === profileId;
   }, [currentUser?.id, id]);
 
-  // Efect pentru resetarea animațiilor la navigare
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      translateX.setValue(0);
-      scaleX.setValue(1);
-      setBgColor('#ffffff');
-    });
+  // Înfășurăm loadProfile în useCallback
+  const loadProfile = useCallback(async () => {
+    if (!id) {
+      setLoading(false);
+      setProfileData(null);
+      console.warn("ID-ul profilului lipsește.");
+      return;
+    }
 
-    return unsubscribe;
-  }, [navigation]);
-
-  const loadProfile = async () => {
-    if (!id) return;
-
+    setLoading(true); 
+    setRefreshing(true); 
     try {
-      setLoading(true);
       const cleanId = String(id).trim();      
       const response = await fetch(getApiUrl(`/users/profile/${cleanId}`), {
         headers: {
@@ -99,6 +140,8 @@ export default function DynamicProfileScreen() {
         console.error(`Eroare HTTP: ${response.status} - ${response.statusText}`);
         const text = await response.text();
         console.error('Conținut răspuns:', text);
+        setProfileData(null); 
+        Alert.alert('Eroare Server', `Eroare la încărcarea profilului: ${response.status}`);
         throw new Error(`Eroare la încărcarea profilului: ${response.status}`);
       }
       
@@ -108,35 +151,49 @@ export default function DynamicProfileScreen() {
         setProfileData(data.data);
       } else {
         console.error('API a returnat eroare:', data);
-        Alert.alert('Eroare', 'Nu s-au putut încărca datele profilului');
+        setProfileData(null); 
+        Alert.alert('Eroare API', data.message || 'Nu s-au putut încărca datele profilului');
       }
     } catch (error) {
       console.error('Eroare la încărcarea profilului:', error);
-      Alert.alert('Eroare', 'Nu s-au putut încărca datele profilului');
+      setProfileData(null); 
+      Alert.alert('Eroare Critică', 'Nu s-au putut încărca datele profilului din cauza unei erori neașteptate.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [id]);
+
+  // Efect pentru resetarea animațiilor la navigare
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      translateX.setValue(0);
+      scaleX.setValue(1);
+      setBgColor('#ffffff');
+    });
+
+    return unsubscribe;
+  }, [navigation, translateX, scaleX]);
 
   useEffect(() => {
     loadProfile();
-  }, [id]);
+  }, [loadProfile]);
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
+  const handleRefresh = useCallback(async () => {
     await loadProfile();
-  };
+  }, [loadProfile]);
 
-  const openEditModal = () => {
+  const openEditModal = useCallback(() => {
     setEditModalVisible(true);
-  };
+  }, []);
 
-  const toggleProfileMenu = () => {
+  const toggleProfileMenu = useCallback(() => {
     setIsProfileMenuOpen(!isProfileMenuOpen);
-  };
+  }, [isProfileMenuOpen]);
 
-  const openPostDetail = (post: Post) => {
+  const openPostDetail = useCallback((post: Post) => {
+    if (!profileData) return;
+    
     const postData = {
       id_post: post.id_post,
       content: post.content,
@@ -148,24 +205,24 @@ export default function DynamicProfileScreen() {
     };
 
     const userData = {
-      id: profileData?.user.id_user || '',
-      username: profileData?.user.username || 'Utilizator',
-      avatar_url: profileData?.user.profile_picture || undefined,
+      id: profileData.user.id_user || '',
+      username: profileData.user.username || 'Utilizator',
+      avatar_url: profileData.user.profile_picture || undefined,
     };
 
     setSelectedPost(postData);
     setSelectedPostUser(userData);
     setPostDetailVisible(true);
-  };
+  }, [profileData]);
 
-  const closePostDetail = () => {
+  const closePostDetail = useCallback(() => {
     setPostDetailVisible(false);
     setSelectedPost(null);
     setSelectedPostUser(null);
-  };
+  }, []);
 
   // Navigare înapoi cu animație
-  const goBack = () => {
+  const goBack = useCallback(() => {
     // Asigurăm că utilizăm separate animația pentru culoare (JS) de cele native
     // iOS are probleme când amestecăm useNativeDriver true/false pe același nod
     setBgColor('#f2f2f2');
@@ -189,10 +246,10 @@ export default function DynamicProfileScreen() {
         router.push('/(home)' as any);
       }
     });
-  };
+  }, [router, translateX, scaleX]);
 
   // Funcție pentru gestionarea gestului de swipe pe web
-  const handleWebSwipe = (e: any) => {
+  const handleWebSwipe = useCallback((e: any) => {
     if (!IS_WEB) return;
     
     const touchStartX = (e.touches?.[0]?.clientX || e.nativeEvent?.pageX || 0);
@@ -251,10 +308,10 @@ export default function DynamicProfileScreen() {
       document.addEventListener('touchmove', handleTouchMove);
       document.addEventListener('touchend', handleTouchEnd);
     }
-  };
+  }, [translateX, scaleX, goBack]);
 
   // Gestionarea gestului de swipe pentru dispozitive mobile
-  const onGestureEvent = ({ nativeEvent }: { nativeEvent: any }) => {
+  const onGestureEvent = useCallback(({ nativeEvent }: { nativeEvent: any }) => {
     if (nativeEvent.translationX > 0) {
       // Animații native
       translateX.setValue(nativeEvent.translationX);
@@ -266,9 +323,9 @@ export default function DynamicProfileScreen() {
         setBgColor('#f2f2f2');
       }
     }
-  };
+  }, [translateX, scaleX]);
 
-  const onGestureEnd = ({ nativeEvent }: { nativeEvent: any }) => {
+  const onGestureEnd = useCallback(({ nativeEvent }: { nativeEvent: any }) => {
     if (nativeEvent.translationX > SWIPE_THRESHOLD) {
       goBack();
     } else {
@@ -289,7 +346,7 @@ export default function DynamicProfileScreen() {
       // Resetăm culoarea separat
       setBgColor('#ffffff');
     }
-  };
+  }, [translateX, scaleX, goBack]);
 
   if (loading) {
     return (
@@ -314,6 +371,30 @@ export default function DynamicProfileScreen() {
     );
   }
 
+  // Randare condiționată simplificată
+  const renderContent = () => {
+    if (!profileData) return null;
+
+    // Folosim variabile constante pentru a evita re-evaluări
+    const profileProps: AnimatedProfileContentProps = {
+      translateX,
+      scaleX,
+      currentUser,
+      profileData,
+      isOwnProfile,
+      refreshing,
+      handleRefresh,
+      openEditModal,
+      openPostDetail,
+      goBack,
+      toggleProfileMenu
+    };
+
+    return (
+      <AnimatedProfileContent {...profileProps} />
+    );
+  };
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
@@ -332,18 +413,7 @@ export default function DynamicProfileScreen() {
             ]}
             onTouchStart={handleWebSwipe}
           >
-            <ProfileContent 
-              profileData={profileData}
-              isOwnProfile={isOwnProfile}
-              refreshing={refreshing}
-              handleRefresh={handleRefresh}
-              openEditModal={openEditModal}
-              openPostDetail={openPostDetail}
-              goBack={goBack}
-              toggleProfileMenu={toggleProfileMenu}
-              router={router}
-              currentUser={currentUser}
-            />
+            {renderContent()}
           </Animated.View>
         </View>
       ) : (
@@ -363,18 +433,7 @@ export default function DynamicProfileScreen() {
                 }
               ]}
             >
-              <ProfileContent 
-                profileData={profileData}
-                isOwnProfile={isOwnProfile}
-                refreshing={refreshing}
-                handleRefresh={handleRefresh}
-                openEditModal={openEditModal}
-                openPostDetail={openPostDetail}
-                goBack={goBack}
-                toggleProfileMenu={toggleProfileMenu}
-                router={router}
-                currentUser={currentUser}
-              />
+              {renderContent()}
             </Animated.View>
           </PanGestureHandler>
         </View>
@@ -414,145 +473,11 @@ export default function DynamicProfileScreen() {
   );
 }
 
-// Componenta separată pentru conținutul profilului pentru a evita duplicarea codului
-function ProfileContent({
-  profileData, 
-  isOwnProfile, 
-  refreshing, 
-  handleRefresh, 
-  openEditModal, 
-  openPostDetail, 
-  goBack, 
-  toggleProfileMenu, 
-  router, 
-  currentUser
-}: {
-  profileData: ProfileData,
-  isOwnProfile: boolean,
-  refreshing: boolean,
-  handleRefresh: () => Promise<void>,
-  openEditModal: () => void,
-  openPostDetail: (post: Post) => void,
-  goBack: () => void,
-  toggleProfileMenu: () => void,
-  router: any,
-  currentUser: any
-}) {
-  return (
-    <SafeAreaView style={styles.contentContainer}>
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={goBack}
-        >
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {profileData.user.username || 'Profil'}
-        </Text>
-        <TouchableOpacity 
-          style={styles.settingsButton} 
-          onPress={toggleProfileMenu}
-        >
-          <Ionicons name="settings-outline" size={24} color="#333" />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            colors={['#007AFF']}
-            tintColor={'#007AFF'}
-            title={'Se reîmprospătează...'}
-            titleColor={'#666'}
-          />
-        }
-      >
-        <ProfileHeader 
-          user={null}
-          profile={profileData.user}
-          postCount={profileData.postCount}
-          connectionCount={profileData.connectionCount}
-          onEditPress={isOwnProfile ? openEditModal : () => {}}
-          isOwnProfile={isOwnProfile}
-        />
-
-        <UserPostsGrid 
-          posts={profileData.posts} 
-          onPostPress={openPostDetail} 
-          isOwnProfile={isOwnProfile}
-        />
-        
-      </ScrollView>
-
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => router.push('/(home)')}
-        >
-          <Ionicons name="home-outline" size={24} color="#666" />
-          <Text style={styles.navText}>Acasă</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => {
-            console.log('Pagina de explore trebuie configurată');
-          }}
-        >
-          <Ionicons name="compass-outline" size={24} color="#666" />
-          <Text style={styles.navText}>Explorează</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => router.push('/(home)/create-post')}
-        >
-          <Ionicons name="add-circle-outline" size={24} color="#666" />
-          <Text style={styles.navText}>Postează</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => {
-            console.log('Pagina de notificări trebuie configurată');
-          }}
-        >
-          <Ionicons name="notifications-outline" size={24} color="#666" />
-          <Text style={styles.navText}>Notificări</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.navItem} 
-          onPress={() => {
-            if (currentUser?.id) {
-              router.push(`/(profile)/${currentUser.id}` as any);
-            }
-          }}
-        >
-          <Ionicons 
-            name={isOwnProfile ? "person" : "person-outline"} 
-            size={24} 
-            color={isOwnProfile ? "#007AFF" : "#666"} 
-          />
-          <Text style={isOwnProfile ? styles.navTextActive : styles.navText}>
-            Profil
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
-  );
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
   animatedContent: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  contentContainer: {
     flex: 1,
     backgroundColor: '#fff',
   },
@@ -572,78 +497,11 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 20,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
   backButton: {
     padding: 8,
   },
   backButtonText: {
     color: '#007AFF',
     fontSize: 16,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  settingsButton: {
-    padding: 8,
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    backgroundColor: '#fff',
-  },
-  navItem: {
-    alignItems: 'center',
-  },
-  navText: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 5,
-  },
-  navTextActive: {
-    fontSize: 12,
-    color: '#007AFF',
-    marginTop: 5,
-  },
-  noPostsContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    marginTop: 20,
-  },
-  noPostsText: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  createPostButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1,
-  },
-  createPostButtonText: {
-    color: '#fff',
-    marginLeft: 8,
-    fontSize: 16,
-    fontWeight: '600',
   },
 }); 

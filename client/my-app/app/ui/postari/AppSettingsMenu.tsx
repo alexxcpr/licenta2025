@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useUser } from '@clerk/clerk-expo';
 import { supabase } from '@/utils/supabase';
-import { SignOutButton } from '../../components/SignOutButton';
+import { SignOutButton } from '../../../components/SignOutButton';
 import { 
   PanGestureHandler, 
   GestureHandlerRootView 

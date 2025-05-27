@@ -6,7 +6,7 @@ import PostList from '../../components/PostList'
 import SvgLogo from '../../components/SvgLogo'
 import DeveloperInfoDialog from '../../components/DeveloperInfoDialog'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import AppSettingsMenu from '../ui/AppSettingsMenu'
+import AppSettingsMenu from '../../app/ui/postari/AppSettingsMenu'
 
 // Tipul datelor pentru un post în feed
 interface FeedItem {
