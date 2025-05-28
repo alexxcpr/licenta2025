@@ -55,7 +55,7 @@ logica implementare:
     - job_activity (id_job_activity, id_user, id_domeniu, id_functie, data_inceput, companie, data_sfarsit, descriere) -> se foloseste pentru a inregistra istoricul activitatii userului (raportul activitatii-> unde a lucrat, cat, ce functie a avut, ce lucruri a facut acolo)
     - other_activity (id_other_activity, id_user, denumire, storage_file)
     **EXISTENTE**
-    - user (id_domeniu, id_functie)
+    - user (id_domeniu, id_functie, id_ocupatie)
 
 teorie:
 	- toate tehnologiile folosite
@@ -64,6 +64,11 @@ teorie:
 				2.1
 				2.2
 			
+
+### 📝 Pagina de profil
+- ✅ Număr conexiuni:
+  - ✅Necesită tabelă nouă + relații în Supabase
+  - ✅Trebuie adăugată în ErDiagram.md
 
 ### 📝 Chat în timp real
 - Chat individual
@@ -91,11 +96,6 @@ teorie:
 - Listă cu membri și roluri
 - Pagină pentru grup cu postările specifice
 - Chat de grup
-
-### ✅ Pagina de profil
-- ✅ Număr conexiuni:
-  - ✅Necesită tabelă nouă + relații în Supabase
-  - ✅Trebuie adăugată în ErDiagram.md
 
 ### 📝 Stergere conexiune (cont)
 

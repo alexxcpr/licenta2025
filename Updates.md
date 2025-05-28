@@ -2,6 +2,12 @@
 
 ⬇️alpha -> 🔜beta -> 🔜release candidate(RC) -> 🔜versiune finala
 
+## alpha 01.0.6
+*IMPLEMENTARI NOI*
+- la sign up se cere si domeniul de activitate, functia si ocupatia
+*IMBUNATATIRI*
+
+*BUG FIXES*
 
 ## alpha 01.0.5
 *IMPLEMENTARI NOI*
