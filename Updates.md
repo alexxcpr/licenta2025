@@ -2,6 +2,25 @@
 
 ⬇️alpha -> 🔜beta -> 🔜release candidate(RC) -> 🔜versiune finala
 
+
+## alpha 01.0.5
+*IMPLEMENTARI NOI*
+- modificata diagrama ER pentru a include tabela de conexiuni si cereri de conexiune
+- adaugate tabelele noi in baza de date (connection, connection_request)
+- adaugat sistem conexiuni:
+  - se poate trimite o conexiune unui user
+  - acesta primeste o cerere de conexiune 
+  - cererile de conexiuni se pot vedea in settings -> Cereri conexiune
+  - din lista cu cereri se poate accepta/refuza cererea de conexiune
+  - butonul de trimite conexiune de pe profilul userului se schimba in functie de starea cererii, daca nu exista o cerere=>"Trimite conexiune". Daca exista o cerere trimisa=>"Asteapta raspuns". Daca cererea a fost acceptata=>"Sterge conexiunea"
+- Dialog stil modal pentru confirmari si feedback vizual
+- 
+*IMBUNATATIRI*
+- Implementat sistem de cache pentru pagina de profil si home page (acum nu se re-randeaza intreaga pagina de fiecare data cand se acceseaza)
+  
+*BUG FIXES*
+- sterse fisierele care nu mai sunt folosite
+
 ## alpha 01.0.4
 *IMPLEMENTARI NOI*
 - Functionalitate pentru butonul de listView pentru profil, acum postarile se vor afisa in lista (in loc de grid)
