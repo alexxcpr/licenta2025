@@ -25,21 +25,6 @@ Dezvoltarea unei platforme de rețea socială dedicată profesioniștilor dintr-
 
 ## 📋 Funcționalități în curs de implementare
 
-### 📝 Flux stergere postare
-
-### 📝 Sistem conexiuni
-- ✅tabele noi in supabase: 
-  - ✅connection_request(id_connection_request, id_user_sender, id_user_receiver, status, date_created, date_updated)
-  - ✅connection(id_connection, id_user_1, id_user_2, date_created, date_updated)
-- ✅se adauga in diagrama erDiagram.md
-- ✅cod sql pentru crearea tabelului in supabase:
-- ✅se adauga relatiile in supabase
-- ✅buton pe profilul utilizatorului cu trimitere cerere de conexiune
-- ✅in setari -> buton cu lista cererilor de conexiune:
-  - ✅din lista se poate accepta sau se poate sterge cererea de conexiune (bifa si X)
-- ✅pe profil cand se apasa pe butonul cu numarul de conexiuni se deschide un modal cu lista conexiunilor
-  - in modalul de lista conexiunilor se poate sterge o conexiune (X)
-
 ### 📝 Sugestii importante - prof. Florentina Toader 
 - 1.cand face cont sa aiba posibilitatea de a trece domeniul si functia (dropdown)
 - 2.prietenii sa fie grupati in functie de domeniu in care lucreaza (buton conexiunile mele in settings. Settings->Conexiunile mele (ConnectionList.tsx))
@@ -49,7 +34,7 @@ logica implementare:
   - 1,2,3 domeniul ar trebui sa apara pe profil sub numele de utilizator (este important)
   - 1,3 functia ar trebui sa apara pe profil sub domeniu (este importanta)
   - inca un buton informativ (i) precum cel de ListView si postari salvate pe profil dar sa fie cu: domeniul, functia, educatia, certificarile utilizatorului => ProfileDetails.tsx
-  - componenta noua: ProfileDetails.tsx => se afiseaza cand se apasa pe "mai multe detalii"
+  - componenta noua: ProfileDetails.tsx => se afiseaza cand se apasa pe "mai multe detalii" sau pe butonul informativ (i) 
   - pe profilul meu => buton cu Adauga activitate => create job_activity din form => se afiseaza in noua componenta
   - pe profilul meu => buton cu Adauga certificat/curs => create other_activity din form => se afiseaza in noua componenta
   - Ordinea de afisare in *ProfileDetails*:
@@ -95,7 +80,9 @@ teorie:
   2. Numărul total de membri
   3. Numărul de postări
 
-### 📝 Funcționalități pentru grupuri
+### 📝 Flux stergere postare
+
+### ❌ Funcționalități pentru grupuri
 - Creare grup
 - Ștergere grup
 - Trimitere invitații
@@ -157,6 +144,18 @@ Utilizatorul primește notificări când:
 - Containerizare Kubernetes (opțional)
 
 ### ✅ Pagina setări
+
+### ✅ Sistem conexiuni
+- ✅tabele noi in supabase: 
+  - ✅connection_request(id_connection_request, id_user_sender, id_user_receiver, status, date_created, date_updated)
+  - ✅connection(id_connection, id_user_1, id_user_2, date_created, date_updated)
+- ✅se adauga in diagrama erDiagram.md
+- ✅cod sql pentru crearea tabelului in supabase:
+- ✅se adauga relatiile in supabase
+- ✅buton pe profilul utilizatorului cu trimitere cerere de conexiune
+- ✅in setari -> buton cu lista cererilor de conexiune:
+  - ✅din lista se poate accepta sau se poate sterge cererea de conexiune (bifa si X)
+- ✅pe profil cand se apasa pe butonul cu numarul de conexiuni se deschide un modal cu lista conexiunilor
 
 ## 🛠️ De îmbunătățit
 - Ștergerea imaginii din bucket când se șterge o postare
