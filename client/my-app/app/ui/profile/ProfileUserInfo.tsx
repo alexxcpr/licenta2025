@@ -6,6 +6,7 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { UserProfile } from '@/utils/types';
@@ -26,6 +27,22 @@ interface ProfileUserInfoProps {
   isCurrentUserProfile: boolean;
 }
 
+// Noi interfețe pentru datele suplimentare
+interface Domeniu {
+  id_domeniu: number;
+  denumire: string;
+}
+
+interface Functie {
+  id_functie: number;
+  denumire: string;
+}
+
+interface Ocupatie {
+  id_ocupatie: number;
+  denumire: string;
+}
+
 const ProfileUserInfo: React.FC<ProfileUserInfoProps> = ({
   user,
   profile,
@@ -40,6 +57,15 @@ const ProfileUserInfo: React.FC<ProfileUserInfoProps> = ({
   const [connectionCount, setConnectionCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [connectionModalVisible, setConnectionsModalVisible] = useState<boolean>(false);
+  
+  // State-uri noi pentru informațiile profesionale
+  const [domeniu, setDomeniu] = useState<Domeniu | null>(null);
+  const [functie, setFunctie] = useState<Functie | null>(null);
+  const [ocupatie, setOcupatie] = useState<Ocupatie | null>(null);
+  const [loadingProfInfo, setLoadingProfInfo] = useState<boolean>(false);
+
+  // Adăugăm state pentru a controla înălțimea expandată
+  const [expanded, setExpanded] = useState<boolean>(false);
 
   // Funcție pentru actualizarea numărului de conexiuni
   const fetchConnectionCount = useCallback(async () => {
@@ -68,10 +94,75 @@ const ProfileUserInfo: React.FC<ProfileUserInfoProps> = ({
     }
   }, [profileUserId]);
 
+  // Funcție nouă pentru obținerea informațiilor profesionale
+  const fetchProfessionalInfo = useCallback(async () => {
+    if (!profileUserId) return;
+
+    try {
+      setLoadingProfInfo(true);
+      
+      // Obținem informațiile despre utilizator, inclusiv id-urile pentru domeniu, funcție și ocupație
+      const { data: userData, error: userError } = await supabase
+        .from('user')
+        .select('id_domeniu, id_functie, id_ocupatie')
+        .eq('id_user', profileUserId)
+        .single();
+
+      if (userError) {
+        console.error('Eroare la obținerea informațiilor despre utilizator:', userError);
+        return;
+      }
+
+      // Obținem informațiile despre domeniu dacă există
+      if (userData.id_domeniu) {
+        const { data: domeniuData, error: domeniuError } = await supabase
+          .from('domenii')
+          .select('id_domeniu, denumire')
+          .eq('id_domeniu', userData.id_domeniu)
+          .single();
+
+        if (!domeniuError && domeniuData) {
+          setDomeniu(domeniuData);
+        }
+      }
+
+      // Obținem informațiile despre funcție dacă există
+      if (userData.id_functie) {
+        const { data: functieData, error: functieError } = await supabase
+          .from('functii')
+          .select('id_functie, denumire')
+          .eq('id_functie', userData.id_functie)
+          .single();
+
+        if (!functieError && functieData) {
+          setFunctie(functieData);
+        }
+      }
+
+      // Obținem informațiile despre ocupație dacă există
+      if (userData.id_ocupatie) {
+        const { data: ocupatieData, error: ocupatieError } = await supabase
+          .from('ocupatii')
+          .select('id_ocupatie, denumire')
+          .eq('id_ocupatie', userData.id_ocupatie)
+          .single();
+
+        if (!ocupatieError && ocupatieData) {
+          setOcupatie(ocupatieData);
+        }
+      }
+    } catch (error) {
+      console.error('Eroare la obținerea informațiilor profesionale:', error);
+    } finally {
+      setLoadingProfInfo(false);
+    }
+  }, [profileUserId]);
+
   // Actualizăm numărul de conexiuni la fiecare randare a componentei
   useEffect(() => {
     fetchConnectionCount();
-  }, [fetchConnectionCount, profileUserId]);
+    fetchProfessionalInfo(); // Apelăm și funcția pentru obținerea informațiilor profesionale
+  }, [fetchConnectionCount, fetchProfessionalInfo, profileUserId]);
 
   // Afișează data de înregistrare formatată
   const formatJoinDate = () => {
@@ -93,6 +184,11 @@ const ProfileUserInfo: React.FC<ProfileUserInfoProps> = ({
     // Opțional: reîncarcă numărul de conexiuni după închiderea modalului
     fetchConnectionCount();
   };
+  
+  // Comută starea expandată
+  const toggleExpanded = () => {
+    setExpanded(!expanded);
+  };
 
   // Construim numele complet pentru afișare
   const displayName = profile?.username
@@ -100,10 +196,13 @@ const ProfileUserInfo: React.FC<ProfileUserInfoProps> = ({
     : profile?.email || 'Utilizator';
 
   // URL-ul imaginii de profil sau placeholder
-  const profileImageUrl = profile?.profile_picture || user?.imageUrl || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png';
+  const profileImageUrl = profile?.profile_picture || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png';
 
   // Fix: Determinăm corect dacă suntem pe profilul propriu
   const isCurrentUser = isCurrentUserProfile || (clerkUser?.id === profileUserId);
+
+  // Verifică dacă există informații profesionale de afișat
+  const hasProfessionalInfo = domeniu || functie || ocupatie;
 
   // Randarea profilului
   return (
@@ -166,9 +265,45 @@ const ProfileUserInfo: React.FC<ProfileUserInfoProps> = ({
 
       <View style={styles.content}>
         <View style={styles.bioSection}>
-          <Text style={styles.username}>{displayName}</Text>
+          <View style={styles.usernameContainer}>
+            <Text style={styles.username}>{displayName}</Text>
+          </View>
+          
           <Text style={styles.joinDate}>{formatJoinDate()}</Text>
-          {profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
+        
+            {/* Container nou pentru informațiile profesionale */}
+            {hasProfessionalInfo && (
+              <View style={styles.professionalInfoContainer}>
+                {loadingProfInfo ? (
+                  <ActivityIndicator size="small" color="#007AFF" />
+                ) : (
+                  <>
+                    {domeniu && (
+                      <View style={styles.infoItem}>
+                        <Ionicons name="briefcase-outline" size={16} color="#555" />
+                        <Text style={styles.domeniuText}>Domeniu: {domeniu.denumire}</Text>
+                      </View>
+                    )}
+                    
+                    {functie && (
+                      <View style={styles.infoItem}>
+                        <Ionicons name="laptop-outline" size={16} color="#555" />
+                        <Text style={styles.functieText}>Funcție: {functie.denumire}</Text>
+                      </View>
+                    )}
+                    
+                    {ocupatie && (
+                      <View style={styles.infoItem}>
+                        <Ionicons name="school-outline" size={16} color="#555" />
+                        <Text style={styles.ocupatieText}>Ocupație: {ocupatie.denumire}</Text>
+                      </View>
+                    )}
+                  </>
+                )}
+              </View>
+            )}
+            
+            {profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
         </View>
       </View>
 
@@ -239,10 +374,15 @@ const styles = StyleSheet.create({
   bioSection: {
     marginBottom: 10,
   },
+  usernameContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
   username: {
     fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 5,
     color: '#333',
   },
   joinDate: {
@@ -266,6 +406,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#333',
+  },
+  // Stiluri noi pentru informațiile profesionale
+  professionalInfoContainer: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#007AFF',
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  domeniuText: {
+    fontSize: 14,
+    color: '#3366CC',
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  functieText: {
+    fontSize: 14,
+    color: '#6633CC',
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  ocupatieText: {
+    fontSize: 14,
+    color: '#CC3366',
+    marginLeft: 6,
+    fontWeight: '500',
   },
 });
 

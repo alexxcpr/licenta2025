@@ -25,19 +25,19 @@ Dezvoltarea unei platforme de rețea socială dedicată profesioniștilor dintr-
 
 ## 📋 Funcționalități în curs de implementare
 
-### 📝 Sugestii importante - prof. Florentina Toader 
+### ✅ Sugestii importante - prof. Florentina Toader 
 - 1.cand face cont sa aiba posibilitatea de a trece domeniul si functia (dropdown)
 - 2.prietenii sa fie grupati in functie de domeniu in care lucreaza (buton conexiunile mele in settings. Settings->Conexiunile mele (ConnectionList.tsx))
 - 3.in cont: functie, istoric, nivel de invatamant, cursuri, certificari. Sa fie grupati (invatamant la invatamant, marketing la marketing, etc)
 
 logica implementare:
-  - 1,2,3 domeniul ar trebui sa apara pe profil sub numele de utilizator (este important)
-  - 1,3 functia ar trebui sa apara pe profil sub domeniu (este importanta)
-  - inca un buton informativ (i) precum cel de ListView si postari salvate pe profil dar sa fie cu: domeniul, functia, educatia, certificarile utilizatorului => ProfileDetails.tsx
-  - componenta noua: ProfileDetails.tsx => se afiseaza cand se apasa pe "mai multe detalii" sau pe butonul informativ (i) 
-  - pe profilul meu => buton cu Adauga activitate => create job_activity din form => se afiseaza in noua componenta
-  - pe profilul meu => buton cu Adauga certificat/curs => create other_activity din form => se afiseaza in noua componenta
-  - Ordinea de afisare in *ProfileDetails*:
+  -✅ 1,2,3 domeniul ar trebui sa apara pe profil sub numele de utilizator (este important)
+  -✅ 1,3 functia ar trebui sa apara pe profil sub domeniu (este importanta)
+  - ✅inca un buton informativ (i) precum cel de ListView si postari salvate pe profil dar sa fie cu: domeniul, functia, educatia, certificarile utilizatorului => ProfileDetails.tsx
+  - ✅componenta noua: ProfileDetails.tsx => se afiseaza cand se apasa pe "mai multe detalii" sau pe butonul informativ (i) 
+  - ✅pe profilul meu => buton cu Adauga activitate => create job_activity din form => se afiseaza in noua componenta
+  - ✅pe profilul meu => buton cu Adauga certificat/curs => create other_activity din form => se afiseaza in noua componenta
+  - ✅Ordinea de afisare in *ProfileDetails*:
     1. Username
     2. Domeniu
     3. Functie
@@ -46,15 +46,15 @@ logica implementare:
     6. Istoric activitate (job_activity)
     7. Cursuri/Certificari (other_activity)
 
-  tabele noi pentru cataloage de selectie + optiuni filtrare in explore page:
-    **NOI** - de creat + adaugat in erDiagram
+  ✅tabele noi pentru cataloage de selectie + optiuni filtrare in explore page:
+    ✅**NOI** - de creat + adaugat in erDiagram
     - domenii (id_domeniu, denumire) - invatamant, marketing, e-commerce, it...
     - functii (id_functie, denumire) - Director general, programator, vanzator ...  (*Ar trebui sa se muleze cu domeniile)
     - ocupatii (id_ocupatie, denumire) => somer, elev, student, angajat, antreprenor, freelancer...e
     - education_activity (id_education_activity, denumire_institutie, data_inceput, data_sfarsit, denumire_profil)
     - job_activity (id_job_activity, id_user, id_domeniu, id_functie, data_inceput, companie, data_sfarsit, descriere) -> se foloseste pentru a inregistra istoricul activitatii userului (raportul activitatii-> unde a lucrat, cat, ce functie a avut, ce lucruri a facut acolo)
     - other_activity (id_other_activity, id_user, denumire, storage_file)
-    **EXISTENTE**
+    ✅**EXISTENTE**
     - user (id_domeniu, id_functie, id_ocupatie)
 
 teorie:
@@ -64,7 +64,7 @@ teorie:
 				2.1
 				2.2
 			
-
+      
 ### 📝 Pagina de profil
 - ✅ Număr conexiuni:
   - ✅Necesită tabelă nouă + relații în Supabase

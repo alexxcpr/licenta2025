@@ -12,12 +12,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useUser } from '@clerk/clerk-expo';
 import { supabase } from '@/utils/supabase';
-import { SignOutButton } from '../../../components/SignOutButton';
+import { SignOutButton } from '../../SignOutButton';
 import { 
   PanGestureHandler, 
   GestureHandlerRootView 
 } from 'react-native-gesture-handler';
-import ConnectionRequestButton from '../conexiuni/ConnectionRequestButton';
+import ConnectionRequestButton from '../../../app/ui/conexiuni/ConnectionRequestButton';
+import ConnectionsList from '../../../app/ui/conexiuni/ConnectionsList';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 10; // Pragul pentru a considera swipe-ul valid
@@ -107,6 +108,7 @@ const AppSettingsMenu: React.FC<AppSettingsMenuProps> = ({ isVisible, onClose })
   const { user, isSignedIn } = useUser();
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const { requestCount } = useConnectionRequestCount();
+  const [connectionsModalVisible, setConnectionsModalVisible] = useState<boolean>(false);
   
   // Animație pentru meniul lateral
   const translateX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
@@ -194,6 +196,19 @@ const AppSettingsMenu: React.FC<AppSettingsMenuProps> = ({ isVisible, onClose })
     }
   };
 
+  // Funcție pentru a deschide modalul cu conexiuni
+  const handleOpenConnections = () => {
+    animateClose();
+    setTimeout(() => {
+      setConnectionsModalVisible(true);
+    }, 300); // Așteaptă finalizarea animației de închidere
+  };
+
+  // Funcție pentru a închide modalul cu conexiuni
+  const handleCloseConnections = () => {
+    setConnectionsModalVisible(false);
+  };
+
   if (!isVisible) {
     return null;
   }
@@ -240,6 +255,15 @@ const AppSettingsMenu: React.FC<AppSettingsMenuProps> = ({ isVisible, onClose })
               {/* Buton cereri conexiune */}
               {ConnectionRequestButtonMemo}
               
+              {/* Buton pentru Conexiunile mele */}
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={handleOpenConnections}
+              >
+                <Ionicons name="people-outline" size={24} color="#333" style={styles.menuItemIcon} />
+                <Text style={styles.menuItemText}>Conexiunile mele</Text>
+              </TouchableOpacity>
+              
               {/* Opțiuni bazate pe rol */}
               {userRoles.includes('Moderator') && (
                 <TouchableOpacity
@@ -266,11 +290,11 @@ const AppSettingsMenu: React.FC<AppSettingsMenuProps> = ({ isVisible, onClose })
                 </TouchableOpacity>
               )}
               {/* Adaugă un mesaj dacă nu există roluri speciale sau link-uri */}
-              {userRoles.length === 0 && !userRoles.includes('Moderator') && !userRoles.includes('Administrator') && (
+              {/* {userRoles.length === 0 && !userRoles.includes('Moderator') && !userRoles.includes('Administrator') && (
                  <View style={styles.menuItem}>
                     <Text style={styles.menuItemText}>Nu există acțiuni specifice rolului.</Text>
                  </View>
-              )}
+              )} */}
             </View>
 
             <SignOutButton
@@ -279,13 +303,20 @@ const AppSettingsMenu: React.FC<AppSettingsMenuProps> = ({ isVisible, onClose })
               textStyle={styles.logoutText}
               iconColor="red"
               iconStyle={styles.menuItemIcon}
-              // onCloseMenu este o prop nouă ce ar putea fi adăugată la SignOutButton dacă e necesar
-              // de ex. pentru a apela 'onClose' după inițierea dialogului de sign out.
-              // Momentan, SignOutButton gestionează redirectarea, ce ar trebui să ascundă meniul.
             />
           </Animated.View>
         </PanGestureHandler>
       </Animated.View>
+
+      {/* Modal pentru afișarea listei de conexiuni */}
+      {user && (
+        <ConnectionsList
+          visible={connectionsModalVisible}
+          userId={user.id}
+          onClose={handleCloseConnections}
+          username={user.username || 'Utilizator'}
+        />
+      )}
     </GestureHandlerRootView>
   );
 };

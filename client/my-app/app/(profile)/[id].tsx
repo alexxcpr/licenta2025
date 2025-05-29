@@ -17,7 +17,7 @@ import EditProfileModal from './components/EditProfileModal';
 import PostDetailModal from '../ui/postari/PostDetailModal';
 import { Post, UserProfile } from '../../utils/types';
 import { getApiUrl } from '../../config/backend';
-import AppSettingsMenu from '../../app/ui/postari/AppSettingsMenu';
+import AppSettingsMenu from '../../components/ui/general/AppSettingsMenu';
 import { PanGestureHandler, GestureHandlerRootView } from 'react-native-gesture-handler';
 import FullProfilePage from '../ui/profile/FullProfilePage';
 import BottomNavigation from '../ui/navigation/BottomNavigation';

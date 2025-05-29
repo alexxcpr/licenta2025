@@ -65,6 +65,22 @@ const ProfileActionButtons: React.FC<ProfileActionButtonsProps> = ({
           />
         </TouchableOpacity>
       )}
+      
+      <TouchableOpacity
+        style={[
+          styles.actionButton,
+          viewMode === 'info' && styles.activeButton
+        ]}
+        onPress={() => onViewModeChange('info')}
+        accessibilityLabel="Informații profesionale"
+        accessibilityHint="Afișează informațiile profesionale ale utilizatorului"
+      >
+        <Ionicons
+          name="information-circle-outline"
+          size={24}
+          color={viewMode === 'info' ? '#007AFF' : '#666'}
+        />
+      </TouchableOpacity>
     </View>
   );
 };

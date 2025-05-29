@@ -5,9 +5,22 @@
 ## alpha 01.0.6
 *IMPLEMENTARI NOI*
 - la sign up se cere si domeniul de activitate, functia si ocupatia
+- pe pagina de profil apare o sectiune noua, sub bio, cu urmatoarele informatii: domeniu, functie, ocupatie
+- pe pagina de profil, sectiune noua, langa butoanele de afisare a postarilor, un nu buton (i) => afiseaza datele profesionale ale utilizatorului:
+  - Informatii de contact (nume utilizator, domeniu, functie, ocupatie, email)
+  - Educatie (Universitatea, profil, data inceput, data sfarsit)
+  - Experienta profesionala (numele companiei, domeniu, functia, data de inceput, data de sfarsit, descriere)
+  - Alte activitati (cursuri / certificari)
+- Buton nou in setari -> Conexiunile mele
+- In Conexiunile mele -> userii sunt grupati dupa domeniu
+- Butoane noi pentru a adauga detalii pentru noile sectiuni ("Adauga educatie", "Adauga experienta", "Adauga activitate" => se deschide un modal cu campurile de completat)
+
 *IMBUNATATIRI*
+- imbunatatit UX -> cand se schimba intre afisarea grid a postarilor - afisarea in list view a postarilor - postarile salvate - activitatea profesionala a userului, acum se randeaza doar componenta cu detaliile care se schimba, nu toata pagina
+- cand se deschide meniul cu setari nu se mai randeaza numarul de conexiuni, poza de profil si butonul pentru trimite conexiune
 
 *BUG FIXES*
+- rezolvate diferite buguri legate de randare + diferite erori de consola
 
 ## alpha 01.0.5
 *IMPLEMENTARI NOI*

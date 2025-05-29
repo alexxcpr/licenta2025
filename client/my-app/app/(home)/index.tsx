@@ -6,7 +6,7 @@ import PostList from '../../components/PostList'
 import SvgLogo from '../../components/SvgLogo'
 import DeveloperInfoDialog from '../../components/DeveloperInfoDialog'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import AppSettingsMenu from '../../app/ui/postari/AppSettingsMenu'
+import AppSettingsMenu from '../../components/ui/general/AppSettingsMenu'
 import BottomNavigation from '../../app/ui/navigation/BottomNavigation'
 
 // Tipul datelor pentru un post în feed
@@ -295,8 +295,8 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },
   profileImage: {
-    width: 80,
-    height: 80,
+    width: 60,
+    height: 60,
     borderRadius: 50,
   },
   profileNameText: {

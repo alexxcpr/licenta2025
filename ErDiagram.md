@@ -1,7 +1,7 @@
 ```mermaid
 erDiagram
     USER {
-        PKEY id_user
+        PKEY id_user VARCHAR
         TIMESTAMPTZ date_created
         TIMESTAMPTZ date_updated
         VARCHAR(50) username
@@ -9,6 +9,9 @@ erDiagram
         CHAR(60) password_hashed
         TEXT profile_picture
         TEXT bio
+        FKEY id_domeniu INT
+        FKEY id_functie INT
+        FKEY id_ocupatie INT
     }
 
     USER ||--o{ NOTIFICATION : "primeste"
@@ -156,4 +159,69 @@ erDiagram
     }
     USER ||--o{ CONNECTION : "are conexiune cu"
     USER ||--o{ CONNECTION : "are conexiune cu"
+
+    DOMENII {
+        PKEY id_domeniu INT
+        VARCHAR(255) denumire
+        TIMESTAMPTZ date_created
+        TIMESTAMPTZ date_updated
+    }
+
+    EDUCATION_ACTIVITY {
+        PKEY id_education_activity INT
+        FKEY id_user VARCHAR
+        VARCHAR denumire_institutie
+        TIMESTAMPTZ data_inceput
+        TIMESTAMPTZ data_sfarsit
+        VARCHAR denumire_profil
+        TIMESTAMPTZ date_created
+        TIMESTAMPTZ date_updated
+    }
+
+    FUNCTII {
+        PKEY id_functie INT
+        VARCHAR denumire
+        TIMESTAMPTZ date_created
+        TIMESTAMPTZ date_updated
+    }
+
+    JOB_ACTIVITY {
+        PKEY id_job_activity INT
+        FKEY id_user VARCHAR
+        FKEY id_domeniu INT
+        FKEY id_functie INT
+        TIMESTAMPTZ data_inceput
+        TIMESTAMPTZ data_sfarsit
+        VARCHAR companie
+        TEXT descriere
+        TIMESTAMPTZ date_created
+        TIMESTAMPTZ date_updated
+    }
+
+    OCUPATII {
+        PKEY id_ocupatie INT
+        VARCHAR denumire
+        TIMESTAMPTZ date_created
+        TIMESTAMPTZ date_updated
+    }
+
+    OTHER_ACTIVITY {
+        PKEY id_other_activity INT
+        FKEY id_user VARCHAR
+        VARCHAR denumire
+        VARCHAR storage_file
+        TIMESTAMPTZ date_created
+        TIMESTAMPTZ date_updated
+    }
+
+    USER }o--|| DOMENII : "are_domeniu_curent"
+    USER }o--|| FUNCTII : "are_functie_curenta"
+    USER }o--|| OCUPATII : "are_ocupatie_curenta"
+
+    USER ||--o{ EDUCATION_ACTIVITY : "are_istoric_educational"
+    USER ||--o{ JOB_ACTIVITY : "are_istoric_profesional"
+    USER ||--o{ OTHER_ACTIVITY : "are_alte_activitati"
+
+    DOMENII ||--o{ JOB_ACTIVITY : "include_job"
+    FUNCTII ||--o{ JOB_ACTIVITY : "descrie_job_functie"
 ```

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ActivityIndicator, Text, SafeAreaView, RefreshControl, ScrollView } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, StyleSheet, ActivityIndicator, Text, SafeAreaView, RefreshControl, RefreshControlProps } from 'react-native';
 import { UserResource } from '@clerk/types';
 import { UserProfile, Post } from '../../../utils/types';
 import ProfileHeaderTab from './ProfileHeaderTab';
@@ -8,9 +8,10 @@ import ProfileActionButtons from './ProfileActionButtons';
 import ProfileUserPosts from './ProfileUserPosts';
 import ProfileListViewPosts from './ProfileListViewPosts';
 import ProfileSavedPosts from './ProfileSavedPosts';
+import ProfileProfessionalActivity from './ProfileProfessionalActivity';
 import { supabase } from '../../../utils/supabase';
 
-export type ViewMode = 'grid' | 'list' | 'saved';
+export type ViewMode = 'grid' | 'list' | 'saved' | 'info';
 
 interface FullProfilePageProps {
   user: UserResource | null | undefined;
@@ -28,6 +29,96 @@ interface FullProfilePageProps {
   currentUserId?: string;
   isCurrentUserProfile: boolean;
 }
+
+interface ViewComponentProps {
+  posts: Post[];
+  onPostPress: (post: Post) => void;
+  isOwnProfile: boolean;
+  refreshControl: React.ReactElement<RefreshControlProps>;
+  currentUserId?: string;
+}
+
+interface SavedViewComponentProps {
+  savedPosts: Post[];
+  onPostPress: (post: Post) => void;
+  currentUserId?: string;
+  refreshControl: React.ReactElement<RefreshControlProps>;
+  loadingSaved: boolean;
+}
+
+interface InfoViewComponentProps {
+  userId?: string;
+  profile: UserProfile | null;
+  refreshControl: React.ReactElement<RefreshControlProps>;
+  isOwnProfile: boolean;
+}
+
+// Componente separate pentru fiecare tip de vizualizare
+const GridViewComponent = React.memo(({ 
+  posts, 
+  onPostPress, 
+  isOwnProfile, 
+  refreshControl 
+}: ViewComponentProps) => (
+  <ProfileUserPosts 
+    posts={posts} 
+    onPostPress={onPostPress} 
+    isOwnProfile={isOwnProfile}
+    refreshControl={refreshControl} 
+  />
+));
+
+const ListViewComponent = React.memo(({ 
+  posts, 
+  onPostPress, 
+  isOwnProfile, 
+  currentUserId, 
+  refreshControl 
+}: ViewComponentProps) => (
+  <ProfileListViewPosts 
+    posts={posts} 
+    onPostPress={onPostPress} 
+    isOwnProfile={isOwnProfile}
+    currentUserId={currentUserId}
+    refreshControl={refreshControl}
+  />
+));
+
+const SavedPostsComponent = React.memo(({ 
+  savedPosts, 
+  onPostPress, 
+  currentUserId, 
+  refreshControl, 
+  loadingSaved 
+}: SavedViewComponentProps) => (
+  loadingSaved ? (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#007AFF" />
+      <Text style={styles.loadingText}>Se încarcă postările salvate...</Text>
+    </View>
+  ) : (
+    <ProfileSavedPosts 
+      posts={savedPosts} 
+      onPostPress={onPostPress}
+      currentUserId={currentUserId}
+      refreshControl={refreshControl}
+    />
+  )
+));
+
+const InfoComponent = React.memo(({ 
+  userId, 
+  profile, 
+  refreshControl, 
+  isOwnProfile 
+}: InfoViewComponentProps) => (
+  <ProfileProfessionalActivity
+    userId={userId || ''}
+    profile={profile}
+    refreshControl={refreshControl}
+    isOwnProfile={isOwnProfile}
+  />
+));
 
 const FullProfilePage: React.FC<FullProfilePageProps> = ({
   user,
@@ -54,7 +145,7 @@ const FullProfilePage: React.FC<FullProfilePageProps> = ({
     if (viewMode === 'saved' && isOwnProfile && savedPosts.length === 0) {
       loadSavedPosts();
     }
-  }, [viewMode, isOwnProfile]);
+  }, [viewMode, isOwnProfile, savedPosts.length]);
 
   const loadSavedPosts = async () => {
     if (!currentUserId) return;
@@ -101,30 +192,9 @@ const FullProfilePage: React.FC<FullProfilePageProps> = ({
     }
   };
 
-  const handleViewModeChange = (mode: ViewMode) => {
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode);
-  };
-
-  // Componentă pentru header-ul listei, conținând informațiile de profil și butoanele de acțiune
-  const ListHeader = () => (
-    <>
-      <ProfileUserInfo 
-        user={user}
-        profile={profile}
-        postCount={postCount}
-        connectionCount={connectionCount}
-        onEditPress={onEditPress}
-        isOwnProfile={isOwnProfile}
-        profileUserId={profile?.id_user}
-        isCurrentUserProfile={isCurrentUserProfile}
-      />
-      <ProfileActionButtons 
-        viewMode={viewMode} 
-        onViewModeChange={handleViewModeChange}
-        isOwnProfile={isOwnProfile}
-      />
-    </>
-  );
+  }, []);
 
   const refreshControl = (
     <RefreshControl
@@ -137,57 +207,67 @@ const FullProfilePage: React.FC<FullProfilePageProps> = ({
     />
   );
 
-  let content;
-  if (viewMode === 'grid') {
-    content = (
-      <ProfileUserPosts 
-        posts={posts} 
-        onPostPress={onPostPress} 
-        isOwnProfile={isOwnProfile}
-        ListHeaderComponent={ListHeader}
-        refreshControl={refreshControl} 
-      />
-    );
-  } else if (viewMode === 'list') {
-    content = (
-      <ProfileListViewPosts 
-        posts={posts} 
-        onPostPress={onPostPress} 
-        isOwnProfile={isOwnProfile}
-        currentUserId={currentUserId}
-        ListHeaderComponent={ListHeader}
-        refreshControl={refreshControl}
-      />
-    );
-  } else if (viewMode === 'saved' && isOwnProfile) {
-    if (loadingSaved) {
-      content = (
-        <View style={styles.container}>
-          <ListHeader />
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#007AFF" />
-            <Text style={styles.loadingText}>Se încarcă postările salvate...</Text>
-          </View>
-        </View>
-      );
-    } else {
-      content = (
-        <ProfileSavedPosts 
-          posts={savedPosts} 
-          onPostPress={onPostPress}
-          currentUserId={currentUserId}
-          ListHeaderComponent={ListHeader}
-          refreshControl={refreshControl}
-        />
-      );
+  const renderProfileInfo = useCallback(() => (
+    <ProfileUserInfo 
+      user={user}
+      profile={profile}
+      postCount={postCount}
+      connectionCount={connectionCount}
+      onEditPress={onEditPress}
+      isOwnProfile={isOwnProfile}
+      profileUserId={profile?.id_user}
+      isCurrentUserProfile={isCurrentUserProfile}
+    />
+  ), [user, profile, postCount, connectionCount, onEditPress, isOwnProfile, isCurrentUserProfile]);
+
+  const renderContent = () => {
+    switch (viewMode) {
+      case 'grid':
+        return <GridViewComponent 
+                posts={posts} 
+                onPostPress={onPostPress} 
+                isOwnProfile={isOwnProfile}
+                refreshControl={refreshControl} 
+              />;
+      case 'list':
+        return <ListViewComponent 
+                posts={posts} 
+                onPostPress={onPostPress} 
+                isOwnProfile={isOwnProfile}
+                currentUserId={currentUserId}
+                refreshControl={refreshControl} 
+              />;
+      case 'saved':
+        return isOwnProfile ? 
+              <SavedPostsComponent 
+                savedPosts={savedPosts} 
+                onPostPress={onPostPress}
+                currentUserId={currentUserId}
+                refreshControl={refreshControl}
+                loadingSaved={loadingSaved}
+              /> : 
+              <GridViewComponent 
+                posts={posts} 
+                onPostPress={onPostPress} 
+                isOwnProfile={isOwnProfile}
+                refreshControl={refreshControl} 
+              />;
+      case 'info':
+        return <InfoComponent 
+                userId={profile?.id_user} 
+                profile={profile}
+                refreshControl={refreshControl}
+                isOwnProfile={isOwnProfile}
+              />;
+      default:
+        return <GridViewComponent 
+                posts={posts} 
+                onPostPress={onPostPress} 
+                isOwnProfile={isOwnProfile}
+                refreshControl={refreshControl} 
+              />;
     }
-  } else {
-    content = (
-      <ScrollView refreshControl={refreshControl} showsVerticalScrollIndicator={false}>
-        <ListHeader />
-      </ScrollView>
-    )
-  }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -196,7 +276,15 @@ const FullProfilePage: React.FC<FullProfilePageProps> = ({
         onGoBack={onGoBack} 
         onSettingsPress={onSettingsPress}
       />
-      {content}
+      <View style={styles.content}>
+        {renderProfileInfo()}
+        <ProfileActionButtons 
+          viewMode={viewMode} 
+          onViewModeChange={handleViewModeChange}
+          isOwnProfile={isOwnProfile}
+        />
+        {renderContent()}
+      </View>
     </SafeAreaView>
   );
 };
@@ -206,7 +294,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
+  content: {
+    flex: 1,
+  },
   loadingContainer: {
+    flex: 1,
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
