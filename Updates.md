@@ -2,7 +2,7 @@
 
 ⬇️alpha -> 🔜beta -> 🔜release candidate(RC) -> 🔜versiune finala
 
-## alpha 01.0.6
+## alpha 01.1.0
 *IMPLEMENTARI NOI*
 - la sign up se cere si domeniul de activitate, functia si ocupatia
 - pe pagina de profil apare o sectiune noua, sub bio, cu urmatoarele informatii: domeniu, functie, ocupatie
@@ -18,6 +18,7 @@
 *IMBUNATATIRI*
 - imbunatatit UX -> cand se schimba intre afisarea grid a postarilor - afisarea in list view a postarilor - postarile salvate - activitatea profesionala a userului, acum se randeaza doar componenta cu detaliile care se schimba, nu toata pagina
 - cand se deschide meniul cu setari nu se mai randeaza numarul de conexiuni, poza de profil si butonul pentru trimite conexiune
+- imbunatatita diagrama ER
 
 *BUG FIXES*
 - rezolvate diferite buguri legate de randare + diferite erori de consola
