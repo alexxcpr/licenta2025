@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, Alert, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../../utils/supabase';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { DatePickerButton } from './general/datetime-picker';
 
 interface JobActivity {
   id_job_activity?: number;
@@ -32,6 +32,7 @@ const UserPastActivity: React.FC<UserPastActivityProps> = ({
 }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [editingItem, setEditingItem] = useState<JobActivity | null>(null);
   const [formData, setFormData] = useState<Partial<JobActivity>>({
     companie: '',
     id_domeniu: undefined,
@@ -42,8 +43,6 @@ const UserPastActivity: React.FC<UserPastActivityProps> = ({
   // State pentru selectarea datelor
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
-  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
-  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [isCurrentJob, setIsCurrentJob] = useState(false);
 
   // State pentru domenii și funcții
@@ -54,6 +53,9 @@ const UserPastActivity: React.FC<UserPastActivityProps> = ({
   const [selectedDomeniu, setSelectedDomeniu] = useState<{id_domeniu: number, denumire: string} | null>(null);
   const [selectedFunctie, setSelectedFunctie] = useState<{id_functie: number, denumire: string} | null>(null);
 
+  // State pentru validări și erori
+  const [errors, setErrors] = useState<{[key: string]: string}>({});
+
   // Funcție pentru formatarea datelor
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return 'Prezent';
@@ -61,35 +63,63 @@ const UserPastActivity: React.FC<UserPastActivityProps> = ({
     return date.toLocaleDateString('ro-RO', { year: 'numeric', month: 'short' });
   };
 
-  // Funcție pentru formatarea datelor pentru afișare în input
-  const formatDateForDisplay = (date: Date | null) => {
-    if (!date) return '';
-    return date.toLocaleDateString('ro-RO', { year: 'numeric', month: 'long' });
-  };
-
   const handleInputChange = (field: keyof JobActivity, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      return { ...prev, [field]: value };
+    });
+    
+    setErrors((prev) => {
+      return { ...prev, [field]: '' };
+    });
   };
 
-  const handleStartDateChange = (event: any, selectedDate?: Date) => {
-    setShowStartDatePicker(false);
-    if (selectedDate) {
-      setStartDate(selectedDate);
-    }
+  const handleStartDateChange = (date: Date) => {
+    setStartDate(date);
+    setErrors(prev => ({ ...prev, startDate: '' }));
   };
 
-  const handleEndDateChange = (event: any, selectedDate?: Date) => {
-    setShowEndDatePicker(false);
-    if (selectedDate) {
-      setEndDate(selectedDate);
-    }
+  const handleEndDateChange = (date: Date) => {
+    setEndDate(date);
+    setErrors(prev => ({ ...prev, endDate: '' }));
   };
 
   const toggleCurrentJob = () => {
     setIsCurrentJob(!isCurrentJob);
     if (!isCurrentJob) {
       setEndDate(null);
+      setErrors(prev => ({ ...prev, endDate: '' }));
     }
+  };
+
+  const validateForm = () => {
+    const newErrors: {[key: string]: string} = {};
+
+    if (!formData.companie?.trim()) {
+      newErrors.companie = 'Numele companiei este obligatoriu';
+    }
+
+    if (!selectedDomeniu) {
+      newErrors.domeniu = 'Domeniul este obligatoriu';
+    }
+
+    if (!selectedFunctie) {
+      newErrors.functie = 'Funcția este obligatorie';
+    }
+
+    if (!startDate) {
+      newErrors.startDate = 'Data de început este obligatorie';
+    }
+
+    if (!isCurrentJob && !endDate) {
+      newErrors.endDate = 'Data de sfârșit este obligatorie pentru joburile încheiate';
+    }
+
+    if (startDate && endDate && startDate > endDate) {
+      newErrors.endDate = 'Data de sfârșit trebuie să fie după data de început';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const resetForm = () => {
@@ -104,9 +134,11 @@ const UserPastActivity: React.FC<UserPastActivityProps> = ({
     setIsCurrentJob(false);
     setSelectedDomeniu(null);
     setSelectedFunctie(null);
+    setErrors({});
+    setEditingItem(null);
   };
 
-  const handleOpenModal = async () => {
+  const handleOpenModal = async (item?: JobActivity) => {
     // Încărcăm domeniile și funcțiile când se deschide modalul
     try {
       const { data: domeniiData } = await supabase
@@ -121,6 +153,33 @@ const UserPastActivity: React.FC<UserPastActivityProps> = ({
       
       setDomenii(domeniiData || []);
       setFunctii(functiiData || []);
+
+      if (item) {
+        // Editare
+        setEditingItem(item);
+        setFormData({
+          companie: item.companie,
+          id_domeniu: item.id_domeniu,
+          id_functie: item.id_functie,
+          descriere: item.descriere || ''
+        });
+
+        // Setăm domeniile și funcțiile selectate
+        const domeniu = domeniiData?.find(d => d.id_domeniu === item.id_domeniu);
+        const functie = functiiData?.find(f => f.id_functie === item.id_functie);
+        setSelectedDomeniu(domeniu || null);
+        setSelectedFunctie(functie || null);
+
+        // Setăm datele
+        const startDateObj = item.data_inceput ? new Date(item.data_inceput) : null;
+        const endDateObj = item.data_sfarsit ? new Date(item.data_sfarsit) : null;
+        setStartDate(startDateObj);
+        setEndDate(endDateObj);
+        setIsCurrentJob(!item.data_sfarsit);
+      } else {
+        // Adăugare nouă
+        resetForm();
+      }
     } catch (error) {
       console.error('Eroare la încărcarea domeniilor și funcțiilor:', error);
     }
@@ -130,54 +189,104 @@ const UserPastActivity: React.FC<UserPastActivityProps> = ({
 
   const handleSubmit = async () => {
     if (!userId) {
-      Alert.alert('Eroare', 'Trebuie să fiți autentificat pentru a adăuga experiență profesională');
+      Alert.alert('Eroare', 'Trebuie să fiți autentificat pentru a gestiona experiența profesională');
       return;
     }
     
-    if (!formData.companie) {
-      Alert.alert('Eroare', 'Numele companiei este obligatoriu');
-      return;
-    }
-    
-    if (!startDate) {
-      Alert.alert('Eroare', 'Data de început este obligatorie');
+    if (!validateForm()) {
       return;
     }
     
     setLoading(true);
     try {
-      const newJobActivity = {
+      const jobActivityData = {
         id_user: userId,
         companie: formData.companie,
-        id_domeniu: formData.id_domeniu || null,
-        id_functie: formData.id_functie || null,
+        id_domeniu: selectedDomeniu?.id_domeniu || null,
+        id_functie: selectedFunctie?.id_functie || null,
         data_inceput: startDate?.toISOString(),
         data_sfarsit: isCurrentJob ? null : endDate?.toISOString() || null,
         descriere: formData.descriere || null,
-        date_created: new Date().toISOString(),
         date_updated: new Date().toISOString()
       };
-      
-      const { error } = await supabase
-        .from('job_activity')
-        .insert(newJobActivity);
-      
-      if (error) {
-        console.error('Eroare la adăugarea experienței profesionale:', error);
-        Alert.alert('Eroare', 'Nu s-a putut adăuga experiența profesională. Vă rugăm încercați din nou.');
-        return;
+
+      if (editingItem) {
+        // Actualizare
+        const { error } = await supabase
+          .from('job_activity')
+          .update(jobActivityData)
+          .eq('id_job_activity', editingItem.id_job_activity);
+        
+        if (error) {
+          console.error('Eroare la actualizarea experienței profesionale:', error);
+          Alert.alert('Eroare', 'Nu s-a putut actualiza experiența profesională. Vă rugăm încercați din nou.');
+          return;
+        }
+        
+        Alert.alert('Succes', 'Experiența profesională a fost actualizată cu succes.');
+      } else {
+        // Adăugare nouă
+        const newJobActivity = {
+          ...jobActivityData,
+          date_created: new Date().toISOString()
+        };
+        
+        const { error } = await supabase
+          .from('job_activity')
+          .insert(newJobActivity);
+        
+        if (error) {
+          console.error('Eroare la adăugarea experienței profesionale:', error);
+          Alert.alert('Eroare', 'Nu s-a putut adăuga experiența profesională. Vă rugăm încercați din nou.');
+          return;
+        }
+        
+        Alert.alert('Succes', 'Experiența profesională a fost adăugată cu succes.');
       }
       
       resetForm();
       setIsModalVisible(false);
-      await onRefresh(); // Reîmprospătăm datele
-      Alert.alert('Succes', 'Experiența profesională a fost adăugată cu succes.');
+      await onRefresh();
     } catch (error) {
-      console.error('Eroare la adăugarea experienței profesionale:', error);
+      console.error('Eroare la gestionarea experienței profesionale:', error);
       Alert.alert('Eroare', 'A apărut o eroare neașteptată. Vă rugăm încercați din nou.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDelete = async (item: JobActivity) => {
+    Alert.alert(
+      'Confirmare ștergere',
+      'Sunteți sigur că doriți să ștergeți această experiență profesională?',
+      [
+        { text: 'Anulează', style: 'cancel' },
+        { 
+          text: 'Șterge', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { error } = await supabase
+                .from('job_activity')
+                .delete()
+                .eq('id_job_activity', item.id_job_activity);
+              
+              if (error) {
+                console.error('Eroare la ștergerea experienței profesionale:', error);
+                Alert.alert('Eroare', 'Nu s-a putut șterge experiența profesională. Vă rugăm încercați din nou.');
+                return;
+              }
+              
+              await onRefresh();
+              Alert.alert('Succes', 'Experiența profesională a fost ștearsă cu succes.');
+            } catch (error) {
+              console.error('Eroare la ștergerea experienței profesionale:', error);
+              Alert.alert('Eroare', 'A apărut o eroare neașteptată. Vă rugăm încercați din nou.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const renderJobItem = ({ item }: { item: JobActivity }) => (
@@ -188,15 +297,34 @@ const UserPastActivity: React.FC<UserPastActivityProps> = ({
       </View>
       
       <View style={styles.jobContent}>
-        <Text style={styles.companyName}>{item.companie}</Text>
-        
-        <Text style={styles.dateRange}>
-          {formatDate(item.data_inceput)} - {formatDate(item.data_sfarsit)}
-        </Text>
-        
-        {item.descriere && (
-          <Text style={styles.description}>{item.descriere}</Text>
-        )}
+        <View style={styles.jobHeader}>
+          <View style={styles.jobInfo}>
+            <Text style={styles.companyName}>{item.companie}</Text>
+            <Text style={styles.dateRange}>
+              {formatDate(item.data_inceput)} - {formatDate(item.data_sfarsit)}
+            </Text>
+            {item.descriere ? (
+              <Text style={styles.description}>{item.descriere}</Text>
+            ) : null}
+          </View>
+          
+          {isOwnProfile ? (
+            <View style={styles.actionButtons}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => handleOpenModal(item)}
+              >
+                <Ionicons name="create-outline" size={18} color="#007AFF" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => handleDelete(item)}
+              >
+                <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+              </TouchableOpacity>
+            </View>
+          ) : null}
+        </View>
       </View>
     </View>
   );
@@ -211,7 +339,9 @@ const UserPastActivity: React.FC<UserPastActivityProps> = ({
       <View style={styles.modalOverlay}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Adaugă experiență profesională</Text>
+            <Text style={styles.modalTitle}>
+              {editingItem ? 'Editează experiență profesională' : 'Adaugă experiență profesională'}
+            </Text>
             <TouchableOpacity 
               onPress={() => setIsModalVisible(false)}
               style={styles.closeButton}
@@ -224,53 +354,52 @@ const UserPastActivity: React.FC<UserPastActivityProps> = ({
             <View style={styles.formContainer}>
               <Text style={styles.inputLabel}>Numele companiei *</Text>
               <TextInput
-                style={styles.input}
-                value={formData.companie}
+                style={[styles.input, errors.companie ? styles.inputError : null]}
+                value={formData.companie ? String(formData.companie) : ''}
                 onChangeText={(text) => handleInputChange('companie', text)}
                 placeholder="Ex: Google"
+                placeholderTextColor="#999"
               />
+              {errors.companie ? <Text style={styles.errorText}>{errors.companie}</Text> : null}
               
-              <Text style={styles.inputLabel}>Domeniu</Text>
+              <Text style={styles.inputLabel}>Domeniu *</Text>
               <TouchableOpacity 
-                style={styles.selectButton}
+                style={[styles.selectButton, errors.domeniu ? styles.inputError : null]}
                 onPress={() => setShowDomeniiModal(true)}
               >
-                <Text style={styles.selectButtonText}>
+                <Text style={[
+                  styles.selectButtonText, 
+                  !selectedDomeniu ? styles.placeholderText : null
+                ]}>
                   {selectedDomeniu ? selectedDomeniu.denumire : 'Selectează domeniul'}
                 </Text>
                 <Ionicons name="chevron-down" size={20} color="#007AFF" />
               </TouchableOpacity>
+              {errors.domeniu ? <Text style={styles.errorText}>{errors.domeniu}</Text> : null}
               
-              <Text style={styles.inputLabel}>Funcție</Text>
+              <Text style={styles.inputLabel}>Funcție *</Text>
               <TouchableOpacity 
-                style={styles.selectButton}
+                style={[styles.selectButton, errors.functie ? styles.inputError : null]}
                 onPress={() => setShowFunctiiModal(true)}
               >
-                <Text style={styles.selectButtonText}>
+                <Text style={[
+                  styles.selectButtonText,
+                  !selectedFunctie ? styles.placeholderText : null
+                ]}>
                   {selectedFunctie ? selectedFunctie.denumire : 'Selectează funcția'}
                 </Text>
                 <Ionicons name="chevron-down" size={20} color="#007AFF" />
               </TouchableOpacity>
+              {errors.functie ? <Text style={styles.errorText}>{errors.functie}</Text> : null}
               
-              <Text style={styles.inputLabel}>Data de început *</Text>
-              <TouchableOpacity 
-                style={styles.datePickerButton}
-                onPress={() => setShowStartDatePicker(true)}
-              >
-                <Text style={styles.datePickerButtonText}>
-                  {startDate ? formatDateForDisplay(startDate) : 'Selectează data de început'}
-                </Text>
-                <Ionicons name="calendar-outline" size={20} color="#007AFF" />
-              </TouchableOpacity>
-              
-              {showStartDatePicker && (
-                <DateTimePicker
-                  value={startDate || new Date()}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={handleStartDateChange}
-                />
-              )}
+              <DatePickerButton
+                value={startDate}
+                onDateChange={handleStartDateChange}
+                label="Data de început *"
+                placeholder="Selectează data de început"
+                error={errors.startDate ? errors.startDate : undefined}
+                maximumDate={new Date()}
+              />
               
               <View style={styles.checkboxContainer}>
                 <TouchableOpacity 
@@ -279,58 +408,52 @@ const UserPastActivity: React.FC<UserPastActivityProps> = ({
                 >
                   <View style={[
                     styles.checkboxInner, 
-                    isCurrentJob && styles.checkboxChecked
+                    isCurrentJob ? styles.checkboxChecked : null
                   ]}>
-                    {isCurrentJob && <Ionicons name="checkmark" size={14} color="#fff" />}
+                    {isCurrentJob ? <Ionicons name="checkmark" size={14} color="#fff" /> : null}
                   </View>
                 </TouchableOpacity>
                 <Text style={styles.checkboxLabel}>Lucrez aici în prezent</Text>
               </View>
               
-              {!isCurrentJob && (
-                <>
-                  <Text style={styles.inputLabel}>Data de sfârșit</Text>
-                  <TouchableOpacity 
-                    style={styles.datePickerButton}
-                    onPress={() => setShowEndDatePicker(true)}
-                  >
-                    <Text style={styles.datePickerButtonText}>
-                      {endDate ? formatDateForDisplay(endDate) : 'Selectează data de sfârșit'}
-                    </Text>
-                    <Ionicons name="calendar-outline" size={20} color="#007AFF" />
-                  </TouchableOpacity>
-                  
-                  {showEndDatePicker && (
-                    <DateTimePicker
-                      value={endDate || new Date()}
-                      mode="date"
-                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                      onChange={handleEndDateChange}
-                    />
-                  )}
-                </>
-              )}
+              {!isCurrentJob ? (
+                <DatePickerButton
+                  value={endDate}
+                  onDateChange={handleEndDateChange}
+                  label="Data de sfârșit *"
+                  placeholder="Selectează data de sfârșit"
+                  error={errors.endDate ? errors.endDate : undefined}
+                  minimumDate={startDate || undefined}
+                  maximumDate={new Date()}
+                />
+              ) : null}
               
               <Text style={styles.inputLabel}>Descriere</Text>
               <TextInput
-                style={[styles.input, styles.textArea]}
-                value={formData.descriere}
+                style={[styles.input, styles.textArea, errors.descriere ? styles.inputError : null]}
+                value={formData.descriere ? String(formData.descriere) : ''}
                 onChangeText={(text) => handleInputChange('descriere', text)}
                 placeholder="Descrieți responsabilitățile și realizările"
+                placeholderTextColor="#999"
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
               />
+              {errors.descriere ? <Text style={styles.errorText}>{errors.descriere}</Text> : null}
               
               <TouchableOpacity
-                style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+                style={[styles.submitButton, loading ? styles.submitButtonDisabled : null]}
                 onPress={handleSubmit}
                 disabled={loading}
               >
                 {loading ? (
-                  <Text style={styles.submitButtonText}>Se adaugă...</Text>
+                  <Text style={styles.submitButtonText}>
+                    {editingItem ? 'Se actualizează...' : 'Se adaugă...'}
+                  </Text>
                 ) : (
-                  <Text style={styles.submitButtonText}>Adaugă experiență</Text>
+                  <Text style={styles.submitButtonText}>
+                    {editingItem ? 'Actualizează experiență' : 'Adaugă experiență'}
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -360,6 +483,7 @@ const UserPastActivity: React.FC<UserPastActivityProps> = ({
                         setSelectedDomeniu(domeniu);
                         setFormData(prev => ({...prev, id_domeniu: domeniu.id_domeniu}));
                         setShowDomeniiModal(false);
+                        setErrors(prev => ({ ...prev, domeniu: '' }));
                       }}
                     >
                       <Text style={styles.pickerItemText}>{domeniu.denumire}</Text>
@@ -394,6 +518,7 @@ const UserPastActivity: React.FC<UserPastActivityProps> = ({
                         setSelectedFunctie(functie);
                         setFormData(prev => ({...prev, id_functie: functie.id_functie}));
                         setShowFunctiiModal(false);
+                        setErrors(prev => ({ ...prev, functie: '' }));
                       }}
                     >
                       <Text style={styles.pickerItemText}>{functie.denumire}</Text>
@@ -412,15 +537,15 @@ const UserPastActivity: React.FC<UserPastActivityProps> = ({
     <View style={styles.container}>
       <View style={styles.headerContainer}>
         <Text style={styles.sectionTitle}>Experiență profesională</Text>
-        {isOwnProfile && (
+        {isOwnProfile ? (
           <TouchableOpacity 
             style={styles.addButton}
-            onPress={handleOpenModal}
+            onPress={() => handleOpenModal()}
           >
             <Text style={styles.addButtonText}>Adaugă experiență</Text>
             <Ionicons name="add-circle-outline" size={18} color="#007AFF" />
           </TouchableOpacity>
-        )}
+        ) : null}
       </View>
       
       {(!jobActivities || jobActivities.length === 0) ? (
@@ -503,20 +628,26 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 10,
   },
+  jobHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  jobInfo: {
+    flex: 1,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionButton: {
+    padding: 4,
+    marginLeft: 8,
+  },
   companyName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-  },
-  position: {
-    fontSize: 14,
-    color: '#555',
-    marginTop: 2,
-  },
-  location: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
   },
   dateRange: {
     fontSize: 13,
@@ -554,6 +685,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
+    flex: 1,
   },
   closeButton: {
     padding: 4,
@@ -578,6 +710,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 16,
     backgroundColor: '#f9f9f9',
+    color: '#333',
+  },
+  inputError: {
+    borderColor: '#FF3B30',
+    marginBottom: 4,
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#FF3B30',
+    marginBottom: 12,
+    marginLeft: 4,
   },
   textArea: {
     height: 100,
@@ -610,20 +753,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
-  datePickerButton: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    backgroundColor: '#f9f9f9',
-  },
-  datePickerButtonText: {
-    fontSize: 16,
-    color: '#333',
+  placeholderText: {
+    color: '#999',
   },
   selectButton: {
     flexDirection: 'row',
@@ -639,6 +770,7 @@ const styles = StyleSheet.create({
   selectButtonText: {
     fontSize: 16,
     color: '#333',
+    flex: 1,
   },
   submitButton: {
     backgroundColor: '#007AFF',
@@ -687,6 +819,22 @@ const styles = StyleSheet.create({
   pickerItemText: {
     fontSize: 16,
     color: '#333',
+  },
+  cancelButton: {
+    backgroundColor: '#FF3B30',
+  },
+  cancelButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  confirmButton: {
+    backgroundColor: '#007AFF',
+  },
+  confirmButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

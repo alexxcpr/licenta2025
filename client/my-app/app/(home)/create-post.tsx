@@ -3,7 +3,6 @@ import { StyleSheet, View, Text, TextInput, TouchableOpacity, Image, ScrollView,
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
 import { useRouter } from 'expo-router';
 import { supabase, getSupabaseUrl, getSupabaseAnonKey } from '../../utils/supabase';
 import 'react-native-get-random-values';
@@ -18,6 +17,47 @@ import Animated, {
   interpolate,
   Extrapolation
 } from 'react-native-reanimated';
+import { decode } from 'base64-arraybuffer';
+
+// Conditional import for FileSystem
+let FileSystem: any = null;
+if (Platform.OS !== 'web') {
+  FileSystem = require('expo-file-system');
+}
+
+// Helper function to get file info that works on all platforms
+const getFileInfo = async (uri: string) => {
+  if (Platform.OS === 'web') {
+    // On web, we'll assume the file is valid since we can't easily check size
+    return { exists: true, size: undefined };
+  } else if (FileSystem) {
+    return await FileSystem.getInfoAsync(uri);
+  }
+  return { exists: true, size: undefined };
+};
+
+// Helper function to read file as base64 that works on all platforms
+const readAsBase64 = async (uri: string) => {
+  if (Platform.OS === 'web') {
+    // On web, convert file to base64 using fetch and FileReader
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = (reader.result as string).split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } else if (FileSystem) {
+    return await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+  }
+  throw new Error('Cannot read file on this platform');
+};
 
 // Interfața pentru postare, conformă cu structura din baza de date
 interface PostData {
@@ -284,57 +324,6 @@ export default function CreatePostScreen() {
     }
   };
 
-  // Funcție pentru încărcarea imaginii în Supabase Storage
-  const uploadImageToSupabase = async (uri: string): Promise<{ success: boolean; url?: string; error?: string }> => {
-    try {
-      console.log('DEBUG [uploadImageToSupabase] - Începe procesul de încărcare a imaginii, URI:', uri);
-      console.log('DEBUG [uploadImageToSupabase] - Verificare variabile de mediu:',
-        'SUPABASE_URL:', process.env.EXPO_PUBLIC_SUPABASE_URL ? 'disponibil' : 'nedisponibil',
-        'SUPABASE_ANON_KEY:', process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ? 'disponibil' : 'nedisponibil'
-      );
-      
-      // Generăm un nume unic pentru fișier
-      const fileName = `${uuidv4()}.jpg`;
-      const filePath = `posts/${fileName}`;
-      console.log('DEBUG [uploadImageToSupabase] - Nume generat pentru fișier:', filePath);
-
-      // Obținem URL-ul și cheia anonimă Supabase
-      const supabaseUrl = getSupabaseUrl();
-      const anonKey = getSupabaseAnonKey();
-      
-      console.log('DEBUG [uploadImageToSupabase] - URL Supabase:', supabaseUrl);
-      console.log('DEBUG [uploadImageToSupabase] - Cheie anonimă disponibilă:', anonKey ? 'da' : 'nu');
-      
-      if (!supabaseUrl || !anonKey) {
-        throw new Error('Configurația Supabase nu este disponibilă');
-      }
-
-      // Strategii diferite în funcție de platformă
-      if (Platform.OS === 'web') {
-        return await handleWebUpload(uri, filePath);
-      } else if (Platform.OS === 'ios') {
-        return await handleIosUpload(uri, fileName, filePath, supabaseUrl, anonKey);
-      } else {
-        return await handleAndroidUpload(uri, fileName, filePath, supabaseUrl, anonKey);
-      }
-    } catch (error: any) {
-      console.error('DEBUG [uploadImageToSupabase] - Eroare completă:', error);
-      
-      // Verificăm dacă este o eroare CORS
-      if (error.message && error.message.includes('CORS')) {
-        return { 
-          success: false, 
-          error: 'Eroare CORS la încărcarea imaginii. Încercați să folosiți o imagine din galerie în loc de o imagine din clipboard sau URL.' 
-        };
-      }
-      
-      return { 
-        success: false, 
-        error: error.message || 'A apărut o eroare la încărcarea imaginii.' 
-      };
-    }
-  };
-
   // Funcție pentru încărcarea imaginilor pe web
   const handleWebUpload = async (uri: string, filePath: string): Promise<{ success: boolean; url?: string; error?: string }> => {
     try {
@@ -343,9 +332,16 @@ export default function CreatePostScreen() {
         // Folosim fișierul selectat direct
         console.log('DEBUG [uploadImageToSupabase] - Folosim fișierul selectat direct pe web');
         
+        const file = (window as any).selectedFile;
+        
+        // Citim fișierul ca ArrayBuffer
+        const arrayBuffer = await file.arrayBuffer();
+        
         const { data: uploadData, error } = await supabase.storage
           .from('images')
-          .upload(filePath, (window as any).selectedFile);
+          .upload(filePath, arrayBuffer, {
+            contentType: file.type || 'image/jpeg'
+          });
           
         // Curățăm referința către fișier
         delete (window as any).selectedFile;
@@ -357,12 +353,11 @@ export default function CreatePostScreen() {
 
         console.log('DEBUG [uploadImageToSupabase] - Încărcare reușită:', uploadData);
       }
-      // Verifică dacă URI-ul este un data URL
-      else if (uri.startsWith('data:')) {
-        // Pentru data URLs pe web, folosim o abordare diferită
-        console.log('DEBUG [uploadImageToSupabase] - Folosim abordare specială pentru web cu data URL');
+      // Verifică dacă URI-ul este un blob URL
+      else if (uri.startsWith('blob:')) {
+        // Pentru blob URLs pe web, folosim fetch pentru a obține blob-ul
+        console.log('DEBUG [uploadImageToSupabase] - Procesăm blob URL');
         try {
-          // Convertim data URL în File object (care este un tip special de Blob)
           const response = await fetch(uri);
           const blob = await response.blob();
           
@@ -371,9 +366,43 @@ export default function CreatePostScreen() {
             throw new Error('Blob-ul creat are dimensiunea 0.');
           }
           
+          // Convertim blob-ul în ArrayBuffer
+          const arrayBuffer = await blob.arrayBuffer();
+          
           const { data: uploadData, error } = await supabase.storage
             .from('images')
-            .upload(filePath, blob, {
+            .upload(filePath, arrayBuffer, {
+              contentType: blob.type || 'image/jpeg'
+            });
+            
+          if (error) {
+            console.log('DEBUG [uploadImageToSupabase] - Eroare la încărcare:', error);
+            throw error;
+          }
+
+          console.log('DEBUG [uploadImageToSupabase] - Încărcare reușită:', uploadData);
+        } catch (error) {
+          console.error('DEBUG [uploadImageToSupabase] - Eroare la procesarea blob URL pe web:', error);
+          throw new Error('Nu s-a putut procesa imaginea. Încercați să folosiți o imagine din galerie.');
+        }
+      }
+      // Verifică dacă URI-ul este un data URL
+      else if (uri.startsWith('data:')) {
+        // Pentru data URLs pe web, folosim o abordare diferită
+        console.log('DEBUG [uploadImageToSupabase] - Folosim abordare specială pentru web cu data URL');
+        try {
+          // Convertim data URL în ArrayBuffer direct
+          const response = await fetch(uri);
+          const arrayBuffer = await response.arrayBuffer();
+          
+          // Verificăm dacă arrayBuffer-ul a fost creat corect
+          if (arrayBuffer.byteLength === 0) {
+            throw new Error('ArrayBuffer-ul creat are dimensiunea 0.');
+          }
+          
+          const { data: uploadData, error } = await supabase.storage
+            .from('images')
+            .upload(filePath, arrayBuffer, {
               contentType: 'image/jpeg'
             });
             
@@ -385,76 +414,28 @@ export default function CreatePostScreen() {
           console.log('DEBUG [uploadImageToSupabase] - Încărcare reușită:', uploadData);
         } catch (error) {
           console.error('DEBUG [uploadImageToSupabase] - Eroare la procesarea data URL pe web:', error);
-          
-          // Încercăm o abordare alternativă doar în browser
-          if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-            try {
-              console.log('DEBUG [uploadImageToSupabase] - Încercăm abordare alternativă pentru web');
-              // Creăm un element canvas pentru a converti imaginea
-              const img = document.createElement('img');
-              await new Promise<void>((resolve, reject) => {
-                img.onload = () => resolve();
-                img.onerror = () => reject(new Error('Nu s-a putut încărca imaginea'));
-                img.src = uri;
-              });
-              
-              const canvas = document.createElement('canvas');
-              canvas.width = img.width;
-              canvas.height = img.height;
-              
-              const ctx = canvas.getContext('2d');
-              if (!ctx) throw new Error('Nu s-a putut obține contextul canvas');
-              
-              ctx.drawImage(img, 0, 0);
-              
-              // Convertim canvas în blob
-              const blob = await new Promise<Blob>((resolve, reject) => {
-                canvas.toBlob((b) => {
-                  if (b) resolve(b);
-                  else reject(new Error('Nu s-a putut converti canvas în blob'));
-                }, 'image/jpeg', 0.8);
-              });
-              
-              const { data: uploadData, error } = await supabase.storage
-                .from('images')
-                .upload(filePath, blob, {
-                  contentType: 'image/jpeg'
-                });
-                
-              if (error) {
-                console.log('DEBUG [uploadImageToSupabase] - Eroare la încărcare:', error);
-                throw error;
-              }
-
-              console.log('DEBUG [uploadImageToSupabase] - Încărcare reușită:', uploadData);
-            } catch (canvasError) {
-              console.error('DEBUG [uploadImageToSupabase] - Eroare la abordarea alternativă:', canvasError);
-              throw new Error('Nu s-a putut procesa imaginea în browser. Încercați să folosiți o imagine din galerie.');
-            }
-          } else {
-            throw new Error('Nu s-a putut procesa imaginea. Încercați să folosiți o imagine din galerie.');
-          }
+          throw new Error('Nu s-a putut procesa imaginea. Încercați să folosiți o imagine din galerie.');
         }
       }
       else {
         // Pentru celelalte platforme sau URI-uri normale, folosim fetch
-        console.log('DEBUG [uploadImageToSupabase] - Convertire URI la Blob');
+        console.log('DEBUG [uploadImageToSupabase] - Convertire URI la ArrayBuffer');
         try {
           const response = await fetch(uri);
           if (!response.ok) {
             throw new Error(`Eroare la preluarea imaginii: ${response.status} ${response.statusText}`);
           }
-          const blob = await response.blob();
+          const arrayBuffer = await response.arrayBuffer();
           
-          if (!blob || blob.size === 0) {
-            throw new Error('Nu s-a putut crea blob-ul pentru imagine sau are dimensiunea 0.');
+          if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+            throw new Error('Nu s-a putut crea arrayBuffer-ul pentru imagine sau are dimensiunea 0.');
           }
           
-          console.log('DEBUG [uploadImageToSupabase] - Blob creat, dimensiune:', blob.size, 'bytes, tip:', blob.type);
+          console.log('DEBUG [uploadImageToSupabase] - ArrayBuffer creat, dimensiune:', arrayBuffer.byteLength, 'bytes');
           
           const { data: uploadData, error } = await supabase.storage
             .from('images')
-            .upload(filePath, blob, {
+            .upload(filePath, arrayBuffer, {
               contentType: 'image/jpeg'
             });
             
@@ -488,7 +469,7 @@ export default function CreatePostScreen() {
   const handleIosUpload = async (uri: string, fileName: string, filePath: string, supabaseUrl: string, anonKey: string): Promise<{ success: boolean; url?: string; error?: string }> => {
     try {
       // Verificăm dacă URI-ul este valid și accesibil
-      const fileInfo = await FileSystem.getInfoAsync(uri);
+      const fileInfo = await getFileInfo(uri);
       if (!fileInfo.exists) {
         throw new Error(`Fișierul nu există la calea: ${uri}`);
       }
@@ -546,7 +527,7 @@ export default function CreatePostScreen() {
   const handleAndroidUpload = async (uri: string, fileName: string, filePath: string, supabaseUrl: string, anonKey: string): Promise<{ success: boolean; url?: string; error?: string }> => {
     try {
       // Verificăm dacă URI-ul este valid și accesibil
-      const fileInfo = await FileSystem.getInfoAsync(uri);
+      const fileInfo = await getFileInfo(uri);
       if (!fileInfo.exists) {
         throw new Error(`Fișierul nu există la calea: ${uri}`);
       }
@@ -593,9 +574,7 @@ export default function CreatePostScreen() {
         console.log('DEBUG [handleAndroidUpload] - Încercăm metoda cu blob pentru Android');
         
         // Citim fișierul ca base64
-        const fileContent = await FileSystem.readAsStringAsync(uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
+        const fileContent = await readAsBase64(uri);
         
         // Convertim base64 în format binar
         const binaryData = decode(fileContent);
@@ -630,29 +609,56 @@ export default function CreatePostScreen() {
     }
   };
 
-  // Funcție pentru a decoda datele base64 în format binar
-  function decode(base64: string): Uint8Array {
+  // Funcție pentru încărcarea imaginii în Supabase Storage
+  const uploadImageToSupabase = async (uri: string): Promise<{ success: boolean; url?: string; error?: string }> => {
     try {
-      // Verificăm dacă funcția atob este disponibilă
-      if (typeof atob === 'function') {
-        const binaryString = atob(base64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        return bytes;
-      } else {
-        // Alternativă pentru medii unde atob nu este disponibil
-        const buffer = Buffer.from(base64, 'base64');
-        return new Uint8Array(buffer);
+      console.log('DEBUG [uploadImageToSupabase] - Începe procesul de încărcare a imaginii, URI:', uri);
+      console.log('DEBUG [uploadImageToSupabase] - Verificare variabile de mediu:',
+        'SUPABASE_URL:', process.env.EXPO_PUBLIC_SUPABASE_URL ? 'disponibil' : 'nedisponibil',
+        'SUPABASE_ANON_KEY:', process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ? 'disponibil' : 'nedisponibil'
+      );
+      
+      // Generăm un nume unic pentru fișier
+      const fileName = `${uuidv4()}.jpg`;
+      const filePath = `posts/${fileName}`;
+      console.log('DEBUG [uploadImageToSupabase] - Nume generat pentru fișier:', filePath);
+
+      // Obținem URL-ul și cheia anonimă Supabase
+      const supabaseUrl = getSupabaseUrl();
+      const anonKey = getSupabaseAnonKey();
+      
+      console.log('DEBUG [uploadImageToSupabase] - URL Supabase:', supabaseUrl);
+      console.log('DEBUG [uploadImageToSupabase] - Cheie anonimă disponibilă:', anonKey ? 'da' : 'nu');
+      
+      if (!supabaseUrl || !anonKey) {
+        throw new Error('Configurația Supabase nu este disponibilă');
       }
-    } catch (error) {
-      console.error('Eroare la decodarea base64:', error);
-      // Încercăm o altă abordare
-      const buffer = Buffer.from(base64, 'base64');
-      return new Uint8Array(buffer);
+
+      // Strategii diferite în funcție de platformă
+      if (Platform.OS === 'web') {
+        return await handleWebUpload(uri, filePath);
+      } else if (Platform.OS === 'ios') {
+        return await handleIosUpload(uri, fileName, filePath, supabaseUrl, anonKey);
+      } else {
+        return await handleAndroidUpload(uri, fileName, filePath, supabaseUrl, anonKey);
+      }
+    } catch (error: any) {
+      console.error('DEBUG [uploadImageToSupabase] - Eroare completă:', error);
+      
+      // Verificăm dacă este o eroare CORS
+      if (error.message && error.message.includes('CORS')) {
+        return { 
+          success: false, 
+          error: 'Eroare CORS la încărcarea imaginii. Încercați să folosiți o imagine din galerie în loc de o imagine din clipboard sau URL.' 
+        };
+      }
+      
+      return { 
+        success: false, 
+        error: error.message || 'A apărut o eroare la încărcarea imaginii.' 
+      };
     }
-  }
+  };
 
   const containerStyle = {
     ...StyleSheet.flatten(styles.container),

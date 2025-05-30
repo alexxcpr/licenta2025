@@ -2,6 +2,20 @@
 
 ⬇️alpha -> 🔜beta -> 🔜release candidate(RC) -> 🔜versiune finala
 
+## alpha 01.1.1
+*IMPLEMENTARI NOI*
+- acum din profil -> (i) -> Adaugata posibilitatea de a adauga/modifica/sterge informatiile de contact(domeniu, functie, ocupatie), Educatia, Experienta profesionala, Alte activitati
+
+*IMBUNATATIRI*
+- imbunatatit datetime picker-ul, functioneaza atat pe mobile cat si in web
+- eliminate erorile din consola web
+
+*BUG FIXES*
+- datetime picker-ul din modal pentru adaugarea experientei, educatiei si alte cursuri nu functiona
+- nu se putea alege o imagine/pdf pentru a incarca dovada cursului
+- nu se putea modifica/sterge o informatie adaugata in sectiunile de Educatie / Experienta profesionala / Alte activitati
+- existau 2 componente cu acelasi nume ContactDetails, a fost stearsa cea nefolosita
+  
 ## alpha 01.1.0
 *IMPLEMENTARI NOI*
 - la sign up se cere si domeniul de activitate, functia si ocupatia

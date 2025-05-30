@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, ActivityIndicator, Text, RefreshControl, RefreshControlProps } from 'react-native';
 import { supabase } from '../../../utils/supabase';
-import ContactDetails from './activity/ContactDetails';
+import ContactDetails from './ContactDetails';
 import UserEducation from './activity/UserEducation';
 import UserPastActivity from './activity/UserPastActivity';
 import UserOtherActivities from './activity/UserOtherActivities';
@@ -167,6 +167,9 @@ const ProfileProfessionalActivity: React.FC<ProfileProfessionalActivityProps> = 
         functie={data.functie}
         ocupatie={data.ocupatie}
         email={profile?.email}
+        userId={userId}
+        isOwnProfile={isOwnProfile}
+        onRefresh={loadProfileData}
       />
       
       <UserEducation 
