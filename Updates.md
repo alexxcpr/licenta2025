@@ -2,7 +2,7 @@
 
 ⬇️alpha -> 🔜beta -> 🔜release candidate(RC) -> 🔜versiune finala
 
-## alpha 01.2.1
+## alpha 01.3.0
 *IMPLEMENTARI NOI*
 - pagina explore:
   - search bar in care se pot cauta utilizatori
