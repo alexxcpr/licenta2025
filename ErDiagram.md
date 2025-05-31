@@ -1,5 +1,31 @@
 ```mermaid
 erDiagram
+    CHAT_ROOMS {
+        id_chat_room INT PK
+        denumire VARCHAR(255)
+        descriere TEXT
+        date_created TIMESTAMPTZ
+        date_updated TIMESTAMPTZ
+    }
+
+    CHAT_ROOM_INDIVIDUAL {
+        id_chat_room_individual INT PK
+        id_chat_room INT FK
+        id_user VARCHAR(255) FK
+        date_created TIMESTAMPTZ
+        date_updated TIMESTAMPTZ
+    }
+
+    MESSAGES {
+        id_message INT PK
+        id_chat_room INT FK
+        id_sender VARCHAR(255) FK
+        denumire VARCHAR(255)
+        descriere TEXT
+        date_created TIMESTAMPTZ
+        date_updated TIMESTAMPTZ
+    }
+
     COMMENTS {
         id_comment INT PK
         date_created TIMESTAMPTZ
@@ -50,8 +76,6 @@ erDiagram
         date_created TIMESTAMPTZ
         date_updated TIMESTAMPTZ
     }
-
-   
 
     JOB_ACTIVITY {
         id_job_activity INT PK
@@ -148,6 +172,10 @@ erDiagram
         id_role INT FK
     }
 
+    CHAT_ROOM_INDIVIDUAL }o--|| CHAT_ROOMS : "id_chat_room"
+    CHAT_ROOM_INDIVIDUAL }o--|| USERS : "id_user"
+    MESSAGES }o--|| CHAT_ROOMS : "id_chat_room"
+    MESSAGES }o--|| USERS : "id_sender"
     COMMENTS }o--|| POSTS : "id_post"
     COMMENTS }o--|| USERS : "id_user"
     CONNECTIONS }o--|| USERS : "id_user_1"
