@@ -2,12 +2,11 @@ import React, { useEffect, useState, useCallback, forwardRef, useImperativeHandl
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, Platform, Image, Dimensions, TouchableOpacity, Alert, SafeAreaView, Pressable, Modal } from 'react-native';
 import { supabase } from '../utils/supabase';
 import { Ionicons } from '@expo/vector-icons';
-import PostDetailModal from '../app/ui/postari/PostDetailModal';
 import PostOptionsDialog from './PostOptionsDialog';
 import { useUser } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
-import { getApiUrl } from '../config/backend';
 import FullPost from '../app/ui/postari/FullPost';
+import PostDetailOpener from './PostDetailOpener';
 
 // Definim interfața pentru datele din tabelul post conform structurii din Supabase
 interface PostData {
@@ -92,11 +91,6 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
   // State pentru starea de like și salvare pentru fiecare postare
   const [likedPosts, setLikedPosts] = useState<{[postId: number]: boolean}>({});
   const [savedPosts, setSavedPosts] = useState<{[postId: number]: boolean}>({});
-
-  // State pentru modal-ul de detalii postare
-  const [postDetailVisible, setPostDetailVisible] = useState(false);
-  const [selectedPost, setSelectedPost] = useState<PostData | null>(null);
-  const [selectedPostUser, setSelectedPostUser] = useState<UserData | null>(null);
   
   // State pentru dialogul cu opțiuni pentru postare
   const [optionsDialogVisible, setOptionsDialogVisible] = useState(false);
@@ -333,36 +327,11 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
     }
   };
   
-  // Funcție pentru a deschide detaliile unei postări
-  const openPostDetail = (post: PostData) => {
-    const postUser = users[post.id_user] || {
-      id: post.id_user,
-      username: 'Utilizator necunoscut',
-      avatar_url: undefined
-    };
-    
-    setSelectedPost(post);
-    setSelectedPostUser(postUser);
-    setPostDetailVisible(true);
-  };
-  
-  // Funcție pentru a închide detaliile unei postări
-  const closePostDetail = () => {
-    setPostDetailVisible(false);
-    setSelectedPost(null);
-    setSelectedPostUser(null);
-  };
-  
   // Funcție pentru a naviga la profilul unui utilizator
   const navigateToProfile = (userId: string) => {
     if (userId) {
       router.push(`/(profile)/${userId}` as any);
     }
-  };
-  
-  // Funcție pentru a adăuga un comentariu la o postare
-  const handleComment = (postId: number) => {
-    openPostDetail(posts.find(post => post.id_post === postId) as PostData);
   };
 
   if (loading && posts.length === 0) {
@@ -399,27 +368,43 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={posts}
-        keyExtractor={(item) => `post-${item.id_post}`}
-        renderItem={({ item }) => (
-          <FullPost 
-            post={item}
-            postUser={users[item.id_user] || { id: item.id_user, username: 'Utilizator necunoscut' }}
-            comments={comments[item.id_post] || []}
-            // isLiked={likedPosts[item.id_post] || false}
-            // isSaved={savedPosts[item.id_post] || false}
-            onLike={() => handleLike(item.id_post)}
-            onComment={() => handleComment(item.id_post)}
-            onSend={() => handleSend(item.id_post)}
-            onSave={() => handleSave(item.id_post)}
-            onPostPress={() => openPostDetail(item)}
-            onUserPress={() => navigateToProfile(item.id_user)}
-            onOptionsPress={() => openOptionsMenu(item.id_post)}
+      <PostDetailOpener currentUserId={user?.id}>
+        {(openPostDetail) => (
+          <FlatList
+            data={posts}
+            keyExtractor={(item) => `post-${item.id_post}`}
+            renderItem={({ item }) => (
+              <FullPost 
+                post={item}
+                postUser={users[item.id_user] || { id: item.id_user, username: 'Utilizator necunoscut' }}
+                comments={comments[item.id_post] || []}
+                onLike={() => handleLike(item.id_post)}
+                onComment={() => {
+                  const postUser = users[item.id_user] || {
+                    id: item.id_user,
+                    username: 'Utilizator necunoscut',
+                    avatar_url: undefined
+                  };
+                  openPostDetail(item, postUser);
+                }}
+                onSend={() => handleSend(item.id_post)}
+                onSave={() => handleSave(item.id_post)}
+                onPostPress={() => {
+                  const postUser = users[item.id_user] || {
+                    id: item.id_user,
+                    username: 'Utilizator necunoscut',
+                    avatar_url: undefined
+                  };
+                  openPostDetail(item, postUser);
+                }}
+                onUserPress={() => navigateToProfile(item.id_user)}
+                onOptionsPress={() => openOptionsMenu(item.id_post)}
+              />
+            )}
+            contentContainerStyle={styles.listContainer}
           />
         )}
-        contentContainerStyle={styles.listContainer}
-      />
+      </PostDetailOpener>
 
       {/* Dialog de opțiuni pentru postare */}
       <PostOptionsDialog 
@@ -429,17 +414,6 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
         onDelete={handleDeletePost}
         canDelete={selectedPostId ? posts.find(p => p.id_post === selectedPostId)?.id_user === user?.id : false}
       />
-
-      {/* Modal pentru afișarea detaliilor postării */}
-      {selectedPost && selectedPostUser && (
-        <PostDetailModal
-          visible={postDetailVisible}
-          onClose={closePostDetail}
-          post={selectedPost}
-          postUser={selectedPostUser}
-          currentUserId={user?.id}
-        />
-      )}
     </View>
   );
 });

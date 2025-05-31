@@ -45,7 +45,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ activePage }) => {
         router.push('/(home)' as any);
         break;
       case 'explore':
-        // Implementare viitoare
+        router.push('/(explore)' as any);
         break;
       case 'post':
         router.push('/(home)/create-post' as any);

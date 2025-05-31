@@ -12,7 +12,6 @@ import BottomNavigation from '../../app/ui/navigation/BottomNavigation'
 // Tipul datelor pentru un post în feed
 interface FeedItem {
   id: string;
-  type: 'story' | 'post' | 'dbdata';
   content?: React.ReactNode;
 }
 
@@ -52,7 +51,7 @@ export default function HomePage() {
       // În acest caz, nu avem o cerere API reală, doar simulăm încărcarea
       // și generăm o listă de elemente pentru feed
       const newFeedItems: FeedItem[] = [
-        { id: 'db-data-' + now, type: 'dbdata' }
+        { id: 'db-data-' + now }
       ];
       
       // Salvăm datele în cache
@@ -87,11 +86,6 @@ export default function HomePage() {
       }
     }, [loadFeedData, forceRefresh])
   );
-  
-  // Efectul nu mai este necesar deoarece folosim useFocusEffect
-  // useEffect(() => {
-  //   loadFeedData(false);
-  // }, [loadFeedData]);
 
   // Funcție pentru a actualiza datele
   const onRefresh = useCallback(async () => {
@@ -168,21 +162,15 @@ export default function HomePage() {
   )
 
   const renderFeedItem = ({ item }: { item: FeedItem }) => {
-    switch (item.type) {
-      case 'dbdata':
-        return (
-          <View style={styles.dbDataContainer}>
-            <Text style={styles.dbDataTitle}>Postari acasa</Text>
-            <PostList 
-              key={item.id}
-              ref={postListRef}
-            />
-          </View>
-        )
-      
-      default:
-        return null
-    }
+    return (
+      <View style={styles.dbDataContainer}>
+        <Text style={styles.dbDataTitle}>Postari acasa</Text>
+        <PostList 
+          key={item.id}
+          ref={postListRef}
+        />
+      </View>
+    )
   }
 
   return (

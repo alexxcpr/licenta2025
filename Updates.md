@@ -2,6 +2,19 @@
 
 ⬇️alpha -> 🔜beta -> 🔜release candidate(RC) -> 🔜versiune finala
 
+## alpha 01.2.1
+*IMPLEMENTARI NOI*
+- pagina explore:
+  - search bar in care se pot cauta utilizatori
+  - utilizatorii apar pe parcursul cautarii in search bar
+  - apare un container cu scroll orizontal in care apar diferiti useri noi
+  - apar postari noi de la toti userii in explore feed
+
+*IMBUNATATIRI*
+- optimizare cod home page (renuntat la codul vechi care tinea de story si post)
+
+*BUG FIXES*
+
 ## alpha 01.2.0
 *IMPLEMENTARI NOI*
 - sistem chat functional:
@@ -10,6 +23,7 @@
   - realtime in baza de date pentru mesaje instante
   - posibilitatea de a crea grup (adaugi mai multi useri)
   - posibilitatea de a modifica/sterge o conversatie
+
 *IMBUNATATIRI*
 
 *BUG FIXES*
