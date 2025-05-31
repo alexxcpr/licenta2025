@@ -8,6 +8,15 @@ router.get('/', (req, res) => {
   res.json({ message: 'API funcționează!' });
 });
 
+// Endpoint pentru healthcheck Docker
+router.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
 // Înregistrarea rutelor specifice
 router.use('/users', userRoutes);
 // Adaugă aici alte rute specifice modulelor tale

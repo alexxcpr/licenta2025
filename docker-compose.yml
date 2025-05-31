@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # Serverul API (Backend)
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    env_file:
+      - ./server/.env
+    volumes:
+      # Mapăm un volum pentru logs (opțional)
+      - ./server/logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Clientul React Native Web (Frontend)
+  client:
+    build:
+      context: ./client/my-app
+      dockerfile: Dockerfile
+    ports:
+      - "19000:19000"  # Expo dev server pentru mobile
+      - "19006:19006"  # Web server pentru browser
+    environment:
+      - EXPO_DEVTOOLS_LISTEN_ADDRESS=0.0.0.0
+    env_file:
+      - ./client/my-app/.env
+    depends_on:
+      - server
+    restart: unless-stopped
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  server_logs: 

@@ -4,6 +4,7 @@
   "main": "src/server.ts",
   "scripts": {
     "start": "ts-node src/server.ts",
+    "build": "tsc",
     "dev": "node scripts/start-with-ngrok.js",
     "dev:local": "nodemon --exec ts-node src/server.ts",
     "dev:all": "concurrently \"npm run dev\" \"cd ../client/my-app && expo start\"",
