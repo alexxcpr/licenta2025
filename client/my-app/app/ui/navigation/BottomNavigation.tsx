@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { useUser } from '@clerk/clerk-expo';
 
 // Definim tipurile de pagini active posibile
-export type ActivePage = 'home' | 'explore' | 'post' | 'notifications' | 'profile';
+export type ActivePage = 'home' | 'explore' | 'post' | 'chats' | 'profile';
 
 interface BottomNavigationProps {
   activePage: ActivePage;
@@ -24,8 +24,8 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ activePage }) => {
         return activePage === 'explore' ? 'compass' : 'compass-outline';
       case 'post':
         return activePage === 'post' ? 'add-circle' : 'add-circle-outline';
-      case 'notifications':
-        return activePage === 'notifications' ? 'notifications' : 'notifications-outline';
+      case 'chats':
+        return activePage === 'chats' ? 'chatbubbles' : 'chatbubbles-outline';
       case 'profile':
         return activePage === 'profile' ? 'person' : 'person-outline';
       default:
@@ -50,8 +50,8 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ activePage }) => {
       case 'post':
         router.push('/(home)/create-post' as any);
         break;
-      case 'notifications':
-        // Implementare viitoare
+      case 'chats':
+        router.push('/(chats)' as any);
         break;
       case 'profile':
         if (user?.id) {
@@ -95,11 +95,11 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ activePage }) => {
       
       <TouchableOpacity 
         style={styles.navItem}
-        onPress={() => navigate('notifications')}
+        onPress={() => navigate('chats')}
       >
-        <Ionicons name={getIconName('notifications')} size={24} color={getColor('notifications')} />
-        <Text style={[styles.navText, activePage === 'notifications' && styles.navTextActive]}>
-          Notificări
+        <Ionicons name={getIconName('chats')} size={24} color={getColor('chats')} />
+        <Text style={[styles.navText, activePage === 'chats' && styles.navTextActive]}>
+          Chat-uri
         </Text>
       </TouchableOpacity>
       

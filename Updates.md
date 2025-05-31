@@ -2,6 +2,18 @@
 
 ⬇️alpha -> 🔜beta -> 🔜release candidate(RC) -> 🔜versiune finala
 
+## alpha 01.2.0
+*IMPLEMENTARI NOI*
+- sistem chat functional:
+  - buton pentru chat-uri in bottom navigation
+  - optiune pentru crearea unui chat nou
+  - realtime in baza de date pentru mesaje instante
+  - posibilitatea de a crea grup (adaugi mai multi useri)
+  - posibilitatea de a modifica/sterge o conversatie
+*IMBUNATATIRI*
+
+*BUG FIXES*
+
 ## alpha 01.1.1
 *IMPLEMENTARI NOI*
 - acum din profil -> (i) -> Adaugata posibilitatea de a adauga/modifica/sterge informatiile de contact(domeniu, functie, ocupatie), Educatia, Experienta profesionala, Alte activitati

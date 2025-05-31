@@ -1,5 +1,5 @@
 import 'react-native-url-polyfill/auto'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClientOptions } from '@supabase/supabase-js'
 
 // Verificăm dacă suntem în browser sau în mediul server
 const isBrowser = typeof window !== 'undefined'
@@ -30,23 +30,30 @@ const supabaseStorage = {
 export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || "";
 export const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "";
 
+// Creăm configurația pentru Supabase
+const supabaseConfig: SupabaseClientOptions<any> = {
+  auth: {
+    storage: supabaseStorage,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+}
+
+// Adăugăm configurații specifice pentru realtime doar în browser
+if (isBrowser) {
+  supabaseConfig.realtime = {
+    params: {
+      eventsPerSecond: 1
+    },
+  }
+}
+
 export const supabase = createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
-  {
-    auth: {
-      storage: supabaseStorage,  // Folosim storage-ul nostru personalizat
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: false,
-    },
-    // Forțează folosirea WebSocket-ului din browser
-    realtime: {
-      params: {
-        eventsPerSecond: 1
-      },
-    }
-  })
+  supabaseConfig
+)
 
 // Funcție pentru a obține URL-ul Supabase
 export const getSupabaseUrl = () => {
