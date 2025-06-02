@@ -13,14 +13,14 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useUser } from '@clerk/clerk-expo';
-import EditProfileModal from './components/EditProfileModal';
-import PostDetailModal from '../ui/postari/PostDetailModal';
-import { Post, UserProfile } from '../../utils/types';
-import { getApiUrl } from '../../config/backend';
-import AppSettingsMenu from '../../components/ui/general/AppSettingsMenu';
+import EditProfileModal from '../components/EditProfileModal';
+import PostDetailModal from '../../ui/postari/PostDetailModal';
+import { Post, UserProfile } from '../../../utils/types';
+import { getApiUrl } from '../../../config/backend';
+import AppSettingsMenu from '../../../components/ui/general/AppSettingsMenu';
 import { PanGestureHandler, GestureHandlerRootView } from 'react-native-gesture-handler';
-import FullProfilePage from '../ui/profile/FullProfilePage';
-import BottomNavigation from '../ui/navigation/BottomNavigation';
+import FullProfilePage from '../../ui/profile/FullProfilePage';
+import BottomNavigation from '../../ui/navigation/BottomNavigation';
 
 // Constante și praguri pentru gesturi
 const SWIPE_THRESHOLD = 80;

@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import userRoutes from './user.routes';
+import userRoutes from './userRoutes';
+import conversationRoutes from './conversationRoutes';
 
 const router = Router();
 
@@ -10,6 +11,8 @@ router.get('/', (req, res) => {
 
 // Înregistrarea rutelor specifice
 router.use('/users', userRoutes);
+router.use('/conversations', conversationRoutes);
+
 // Adaugă aici alte rute specifice modulelor tale
 
 export default router; 

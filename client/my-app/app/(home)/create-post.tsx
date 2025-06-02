@@ -18,6 +18,7 @@ import Animated, {
   Extrapolation
 } from 'react-native-reanimated';
 import { decode } from 'base64-arraybuffer';
+import BottomNavigation from '../ui/navigation/BottomNavigation';
 
 // Conditional import for FileSystem
 let FileSystem: any = null;
@@ -752,6 +753,7 @@ export default function CreatePostScreen() {
           </ScrollView>
         </Animated.View>
       </GestureDetector>
+      <BottomNavigation activePage="post" />
     </View>
   );
 }

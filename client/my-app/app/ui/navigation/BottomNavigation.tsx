@@ -55,7 +55,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ activePage }) => {
         break;
       case 'profile':
         if (user?.id) {
-          router.push(`/(profile)/${user.id}` as any);
+          router.push(`/(profile)/users/${user.id}` as any);
         }
         break;
     }

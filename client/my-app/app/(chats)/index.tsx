@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useUser } from '@clerk/clerk-expo';
-import { supabase } from '../../utils/supabase';
+import { getApiUrl } from '../../config/backend';
 import BottomNavigation from '../ui/navigation/BottomNavigation';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -18,7 +18,7 @@ interface ChatRoom {
     date_created: string;
   } | null;
   // Adăugăm utilizatorii pentru a determina numele chat-ului
-  membri?: {
+  participants?: {
     id_user: string;
     username: string;
     email: string;
@@ -35,92 +35,49 @@ export default function ChatsScreen() {
   useEffect(() => {
     if (!user) return;
 
-    // Funcția pentru a încărca camerele de chat
+    // Funcția pentru a încărca camerele de chat prin API
     async function loadChatRooms() {
       try {
         if (!user) return;
         
-        // Obținem doar chat-urile în care utilizatorul curent este membru
-        const { data, error } = await supabase
-          .from('chat_room_individual')
-          .select(`
-            id_chat_room,
-            chat_rooms!inner (
-              id_chat_room,
-              denumire,
-              descriere,
-              date_created,
-              date_updated
-            )
-          `)
-          .eq('id_user', user.id)
-          .order('date_updated', { foreignTable: 'chat_rooms', ascending: false });
-
-        if (error) {
-          console.error('Eroare la încărcarea chat-urilor:', error);
+        console.log('Încărcare conversații pentru utilizatorul:', user.id);
+        
+        const response = await fetch(getApiUrl(`/conversations?userId=${user.id}`), {
+          headers: {
+            'ngrok-skip-browser-warning': 'true',
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        if (!response.ok) {
+          console.error(`Eroare HTTP: ${response.status} - ${response.statusText}`);
           return;
         }
-
-        if (data) {
-          // Pentru fiecare chat, obținem ultimul mesaj și membrii
-          const chatRoomsWithDetails = await Promise.all(
-            data.map(async (item) => {
-              const chatRoom = Array.isArray(item.chat_rooms) ? item.chat_rooms[0] : item.chat_rooms;
-              
-              // Obținem ultimul mesaj
-              const { data: lastMessageData } = await supabase
-                .from('messages')
-                .select('denumire, date_created')
-                .eq('id_chat_room', chatRoom.id_chat_room)
-                .order('date_created', { ascending: false })
-                .limit(1)
-                .single();
-
-              // Obținem toți membrii chat-ului
-              const { data: membersData, error: membersError } = await supabase
-                .from('chat_room_individual')
-                .select(`
-                  user (
-                    id_user,
-                    username,
-                    email,
-                    profile_picture
-                  )
-                `)
-                .eq('id_chat_room', chatRoom.id_chat_room);
-              
-              let membri: any[] = [];
-              if (!membersError && membersData) {
-                membri = membersData.map(memberItem => {
-                  const userObj = Array.isArray(memberItem.user) ? memberItem.user[0] : memberItem.user;
-                  return {
-                    id_user: userObj.id_user,
-                    username: userObj.username || userObj.email,
-                    email: userObj.email,
-                    profile_picture: userObj.profile_picture
-                  };
-                });
-              }
-              
-              return {
-                id_chat_room: chatRoom.id_chat_room,
-                denumire: chatRoom.denumire,
-                descriere: chatRoom.descriere,
-                date_created: chatRoom.date_created,
-                date_updated: chatRoom.date_updated,
-                last_message: lastMessageData ? {
-                  denumire: lastMessageData.denumire,
-                  date_created: lastMessageData.date_created
-                } : null,
-                membri
-              };
-            })
-          );
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+          // Mapăm datele pentru a fi compatibile cu interfața existentă
+          const mappedChatRooms = data.data.map((conversation: any) => ({
+            id_chat_room: conversation.id_chat_room,
+            denumire: conversation.denumire,
+            descriere: conversation.descriere,
+            date_created: conversation.date_updated, // Folosim date_updated ca fallback
+            date_updated: conversation.date_updated,
+            last_message: conversation.lastMessage ? {
+              denumire: conversation.lastMessage.denumire,
+              date_created: conversation.lastMessage.date_created
+            } : null,
+            participants: conversation.participants || []
+          }));
           
-          setChatRooms(chatRoomsWithDetails);
+          setChatRooms(mappedChatRooms);
+          console.log(`Încărcate ${mappedChatRooms.length} conversații`);
+        } else {
+          console.error('API a returnat eroare:', data.message);
         }
       } catch (error) {
-        console.error('Eroare neașteptată:', error);
+        console.error('Eroare la încărcarea conversațiilor:', error);
       } finally {
         setLoading(false);
       }
@@ -132,7 +89,7 @@ export default function ChatsScreen() {
     // în loc de Realtime pentru a evita problemele cu WebSocket
     const refreshInterval = setInterval(() => {
       loadChatRooms();
-    }, 5000); // Reîmprospătăm la fiecare 5 secunde
+    }, 2000); // Reîmprospătăm la fiecare 5 secunde
 
     return () => {
       clearInterval(refreshInterval);
@@ -160,8 +117,8 @@ export default function ChatsScreen() {
   // Obținem numele de afișare pentru o cameră de chat
   const getChatName = (chatRoom: ChatRoom) => {
     // Dacă chat-ul are doar doi membri (1 vs 1), afișăm numele celuilalt utilizator
-    if (chatRoom.membri && chatRoom.membri.length === 2 && user) {
-      const otherUser = chatRoom.membri.find(membru => membru.id_user !== user.id);
+    if (chatRoom.participants && chatRoom.participants.length === 2 && user) {
+      const otherUser = chatRoom.participants.find(participant => participant.id_user !== user.id);
       if (otherUser) {
         return otherUser.username || otherUser.email || 'Utilizator';
       }

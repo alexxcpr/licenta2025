@@ -337,7 +337,7 @@ const ConnectionsList: React.FC<ConnectionsListProps> = ({
     onClose();
     // Corectăm ruta pentru a ne asigura că este validă
     router.push({
-      pathname: '/(profile)/[id]',
+      pathname: '/(profile)/users/[id]',
       params: { id: profileUserId }
     });
   };

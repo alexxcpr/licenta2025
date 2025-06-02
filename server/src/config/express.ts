@@ -8,11 +8,24 @@ import { errorHandler } from '../middleware/error.middleware';
 export const configureApp = (): Application => {
   const app: Application = express();
   
+  // Configurare CORS cu opțiuni explicite
+  app.use(cors({
+    origin: ['http://localhost:3000', 'http://localhost:19006', 'http://localhost:8081', 'exp://'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
+    credentials: true
+  }));
+
   // Middleware-uri de bază
-  app.use(cors());
   app.use(helmet());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
+  
+  // Logging middleware pentru debugging
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+  });
   
   // Ruta de bază
   app.get('/', (req, res) => {
