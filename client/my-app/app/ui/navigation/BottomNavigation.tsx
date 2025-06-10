@@ -127,7 +127,6 @@ const styles = StyleSheet.create({
     borderTopColor: '#eee',
     backgroundColor: '#fff',
     paddingBottom: Platform.OS === 'ios' ? 25 : 10,
-    bottom: 0,
   },
   navItem: {
     alignItems: 'center',

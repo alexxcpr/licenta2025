@@ -4,10 +4,12 @@
 
 ## beta 01.1.1
 *IMBUNATATIRI*
+- adaugata rutarea spre profil din sectiunea de comentarii. cand se apasa pe userul care a scris comentariul, se redirectioneaza catre profilul acestuia
 
 *BUG FIXES*
 - cand se intra in postarile salvate aparea eroarea: Cannot update a component (`ProfileSavedPosts`) while rendering a different component (`CellRenderer`). To locate the bad setState() call inside `CellRenderer`, follow the stack trace as described in https://react.dev/link/setstate-in-render
 - rezolvat modalul de raportare/stergere al unei postari, acum se afiseaza toate optiunile simultan, nu trebuie apasat de mai multe ori pe butonul cu 3 puncte (...) pentru a continua fluxul din modal
+- nu se mai poate crea mai multe chaturi cu acelasi user, cand se doreste crearea unui chat nou cu acelasi user, se deschide cel existent
 
 ## beta 01.1.0
 *IMBUNATATIRI*

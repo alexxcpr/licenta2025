@@ -25,6 +25,9 @@ import PostContent from './PostContent';
 import PostActions from './PostActions';
 import { checkPostStatus, toggleLike, toggleSave, handleSend, addComment } from '../../../utils/postActions';
 
+//utils
+import navigateToProfile from '@/app/utils/Navigation';
+
 // Constante pentru gesturi
 const SWIPE_THRESHOLD = 80;
 const IS_IOS = Platform.OS === 'ios';
@@ -445,7 +448,7 @@ export default function PostDetailModal({
                     postUser={postUser}
                     dateCreated={post.date_created}
                     onOptionsPress={toggleActionsDialog}
-                    onUserPress={() => console.log('Navigare la profilul utilizatorului', postUser.id)}
+                    onUserPress={() => navigateToProfile(postUser.id)}
                     content={post.content}
                   />
 
@@ -483,7 +486,7 @@ export default function PostDetailModal({
                               style={styles.commentAvatar}
                             />
                             <View style={styles.commentInfo}>
-                              <Text style={styles.commentUsername}>{comment.user?.username}</Text>
+                              <Text style={styles.commentUsername} onPress={() => navigateToProfile(comment.user?.id || '')}>{comment.user?.username}</Text>
                               <Text style={styles.commentDate}>{formatTimeAgo(comment.date_created)}</Text>
                             </View>
                           </View>
