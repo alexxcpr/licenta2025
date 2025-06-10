@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { useClerk } from '@clerk/clerk-expo'
-import * as Linking from 'expo-linking'
 import { 
   TouchableOpacity, 
   StyleSheet, 
@@ -16,7 +15,6 @@ import {
   ImageStyle // Technically for Ionicons it's TextStyle but ImageStyle is common mental model
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { useRouter } from 'expo-router'
 
 export interface SignOutButtonProps {
   containerStyle?: StyleProp<ViewStyle>;
@@ -39,20 +37,12 @@ export const SignOutButton: React.FC<SignOutButtonProps> = ({
 }) => {
   // Use `useClerk()` to access the `signOut()` function
   const { signOut } = useClerk()
-  const router = useRouter()
   const [modalVisible, setModalVisible] = useState(false)
 
   const performSignOut = async (): Promise<void> => {
     try {
       await signOut()
-      
-      // Utilizăm expo-router pentru a redirecționa către pagina de autentificare
-      router.replace('/(auth)/sign-in')
-      
-      // Folosim și metoda Linking ca o soluție de rezervă
-      setTimeout(() => {
-        Linking.openURL(Linking.createURL('/(auth)/sign-in'))
-      }, 500)
+      // Nu mai încercăm să navigăm manual, AuthGuard din _layout.tsx va gestiona redirecționarea
     } catch (err) {
       console.error(JSON.stringify(err, null, 2))
       if (Platform.OS === 'web') {

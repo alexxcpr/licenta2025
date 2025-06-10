@@ -395,8 +395,6 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
         }));
       }
       
-      const message = newSaveStatus ? 'Postare salvată cu succes' : 'Postare eliminată din salvate';
-      Alert.alert('Succes', message);
     } catch (error) {
       console.error('Eroare la actualizarea stării salvării:', error);
       

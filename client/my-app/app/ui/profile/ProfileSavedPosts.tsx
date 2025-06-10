@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Post } from '../../../utils/types';
 import FullPost from '../postari/FullPost';
 import { supabase } from '../../../utils/supabase';
-import { toggleLike, toggleSave, handleSend } from '../../../utils/postActions';
+import { toggleLike, toggleSave, handleSend as postActionHandleSend } from '../../../utils/postActions';
 
 //utils
 import navigateToProfile from '@/app/utils/Navigation';
@@ -46,7 +46,6 @@ const ProfileSavedPosts: React.FC<ProfileSavedPostsProps> = ({
   const [users, setUsers] = useState<{[userId: string]: any}>({});
   const [likedPosts, setLikedPosts] = useState<{[postId: number]: boolean}>({});
   const [savedPosts, setSavedPosts] = useState<{[postId: number]: boolean}>({});
-  const [loadedUserIds, setLoadedUserIds] = useState<string[]>([]);
   
   // Inițializăm starea savedPosts cu toate postările marcate ca salvate
   useEffect(() => {
@@ -57,41 +56,54 @@ const ProfileSavedPosts: React.FC<ProfileSavedPostsProps> = ({
     setSavedPosts(initialSavedState);
   }, [posts]);
   
-  // Funcția pentru încărcarea informațiilor utilizatorilor
-  const loadUserData = async (userId: string) => {
-    if (loadedUserIds.includes(userId)) return;
-    
-    try {
-      setLoadingUsers(true);
-      const { data, error } = await supabase
-        .from('user')
-        .select('*')
-        .eq('id_user', userId)
-        .single();
+  // Încărcăm toate datele utilizatorilor într-un singur useEffect
+  useEffect(() => {
+    const loadAllUserData = async () => {
+      if (posts.length === 0) return;
       
-      if (error) {
-        console.error('Eroare la încărcarea datelor utilizatorului:', error);
-        return;
-      }
+      // Extragem toate ID-urile unice de utilizatori din postări
+      const uniqueUserIds = [...new Set(posts.map(post => post.id_user))];
       
-      if (data) {
-        setUsers(prev => ({
-          ...prev,
-          [userId]: {
-            id: data.id_user,
-            username: data.username || 'Utilizator necunoscut',
-            avatar_url: data.profile_picture
-          }
-        }));
+      // Verificăm dacă avem toate datele utilizatorilor deja încărcate
+      const missingUserIds = uniqueUserIds.filter(userId => !users[userId]);
+      
+      if (missingUserIds.length === 0) return;
+      
+      try {
+        setLoadingUsers(true);
         
-        setLoadedUserIds(prev => [...prev, userId]);
+        const { data, error } = await supabase
+          .from('user')
+          .select('*')
+          .in('id_user', missingUserIds);
+        
+        if (error) {
+          console.error('Eroare la încărcarea datelor utilizatorilor:', error);
+          return;
+        }
+        
+        if (data && data.length > 0) {
+          const newUsers = { ...users };
+          
+          data.forEach(userData => {
+            newUsers[userData.id_user] = {
+              id: userData.id_user,
+              username: userData.username || 'Utilizator necunoscut',
+              avatar_url: userData.profile_picture
+            };
+          });
+          
+          setUsers(newUsers);
+        }
+      } catch (error) {
+        console.error('Eroare la procesarea datelor utilizatorilor:', error);
+      } finally {
+        setLoadingUsers(false);
       }
-    } catch (error) {
-      console.error('Eroare la procesarea datelor utilizatorului:', error);
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
+    };
+    
+    loadAllUserData();
+  }, [posts]);
   
   // Funcții pentru acțiunile butoanelor
   const handleLike = async (postId: number) => {
@@ -107,7 +119,7 @@ const ProfileSavedPosts: React.FC<ProfileSavedPostsProps> = ({
   };
   
   const handleSend = (postId: number) => {
-    handleSend(postId);
+    postActionHandleSend(postId);
   };
   
   const handleSave = async (postId: number) => {
@@ -145,11 +157,7 @@ const ProfileSavedPosts: React.FC<ProfileSavedPostsProps> = ({
   );
   
   const renderItem = ({ item }: { item: Post }) => {
-    // Încărcăm datele utilizatorului dacă nu au fost încărcate deja
-    if (!users[item.id_user]) {
-      loadUserData(item.id_user);
-    }
-    
+    // Nu mai încărcăm datele utilizatorului aici, ci folosim doar datele existente
     const postUser = users[item.id_user] || {
       id: item.id_user,
       username: 'Utilizator necunoscut',
@@ -168,15 +176,15 @@ const ProfileSavedPosts: React.FC<ProfileSavedPostsProps> = ({
         postUser={postUser}
         comments={[]} // În lista de posturi salvate, nu afișăm comentarii
         currentUserId={currentUserId}
-        onLike={handleLike}
-        onSave={handleSave}
-        onComment={handleComment}
-        onSend={handleSend}
-        onOptionsPress={handleOptionsPress}
+        onLike={() => handleLike(item.id_post)}
+        onSave={() => handleSave(item.id_post)}
+        onComment={() => handleComment(item.id_post)}
+        onSend={() => handleSend(item.id_post)}
+        onOptionsPress={() => handleOptionsPress(item.id_post)}
         onPostPress={() => onPostPress(item)}
         onUserPress={() => navigateToProfile(postUser.id)}
-        // isLiked={!!likedPosts[item.id_post]}
-        // isSaved={!!savedPosts[item.id_post]}
+        isLiked={!!likedPosts[item.id_post]}
+        isSaved={!!savedPosts[item.id_post]}
       />
     );
   };

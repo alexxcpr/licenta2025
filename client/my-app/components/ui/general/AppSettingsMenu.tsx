@@ -18,7 +18,7 @@ import {
   GestureHandlerRootView 
 } from 'react-native-gesture-handler';
 import ConnectionRequestButton from '../../../app/ui/conexiuni/ConnectionRequestButton';
-import ConnectionsList from '../../../app/ui/conexiuni/ConnectionsList';
+import MyConnectionsButton from '../../../app/ui/conexiuni/MyConnectionsButton';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 10; // Pragul pentru a considera swipe-ul valid
@@ -108,7 +108,6 @@ const AppSettingsMenu: React.FC<AppSettingsMenuProps> = ({ isVisible, onClose })
   const { user, isSignedIn } = useUser();
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const { requestCount } = useConnectionRequestCount();
-  const [connectionsModalVisible, setConnectionsModalVisible] = useState<boolean>(false);
   
   // Animație pentru meniul lateral
   const translateX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
@@ -117,6 +116,11 @@ const AppSettingsMenu: React.FC<AppSettingsMenuProps> = ({ isVisible, onClose })
   // Folosim useMemo pentru a evita rerandarea componentelor la deschiderea meniului
   const ConnectionRequestButtonMemo = useMemo(() => (
     <ConnectionRequestButton onClose={onClose} />
+  ), [onClose]);
+
+  // Memorăm și butonul pentru Conexiunile mele
+  const MyConnectionsButtonMemo = useMemo(() => (
+    <MyConnectionsButton onClose={onClose} />
   ), [onClose]);
 
   // Exportăm numărul de cereri pentru a fi folosit în afara componentei
@@ -196,19 +200,6 @@ const AppSettingsMenu: React.FC<AppSettingsMenuProps> = ({ isVisible, onClose })
     }
   };
 
-  // Funcție pentru a deschide modalul cu conexiuni
-  const handleOpenConnections = () => {
-    animateClose();
-    setTimeout(() => {
-      setConnectionsModalVisible(true);
-    }, 300); // Așteaptă finalizarea animației de închidere
-  };
-
-  // Funcție pentru a închide modalul cu conexiuni
-  const handleCloseConnections = () => {
-    setConnectionsModalVisible(false);
-  };
-
   if (!isVisible) {
     return null;
   }
@@ -255,14 +246,8 @@ const AppSettingsMenu: React.FC<AppSettingsMenuProps> = ({ isVisible, onClose })
               {/* Buton cereri conexiune */}
               {ConnectionRequestButtonMemo}
               
-              {/* Buton pentru Conexiunile mele */}
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={handleOpenConnections}
-              >
-                <Ionicons name="people-outline" size={24} color="#333" style={styles.menuItemIcon} />
-                <Text style={styles.menuItemText}>Conexiunile mele</Text>
-              </TouchableOpacity>
+              {/* Buton pentru Conexiunile mele - folosim componenta memorată */}
+              {MyConnectionsButtonMemo}
               
               {/* Opțiuni bazate pe rol */}
               {userRoles.includes('Moderator') && (
@@ -307,16 +292,6 @@ const AppSettingsMenu: React.FC<AppSettingsMenuProps> = ({ isVisible, onClose })
           </Animated.View>
         </PanGestureHandler>
       </Animated.View>
-
-      {/* Modal pentru afișarea listei de conexiuni */}
-      {user && (
-        <ConnectionsList
-          visible={connectionsModalVisible}
-          userId={user.id}
-          onClose={handleCloseConnections}
-          username={user.username || 'Utilizator'}
-        />
-      )}
     </GestureHandlerRootView>
   );
 };
@@ -430,4 +405,4 @@ const styles = StyleSheet.create({
 });
 
 export default AppSettingsMenu;
-export { useConnectionRequestCount }; 
+export { useConnectionRequestCount };

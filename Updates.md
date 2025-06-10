@@ -2,8 +2,13 @@
 
 ✅alpha -> ⬇️beta -> 🔜release candidate(RC) -> 🔜versiune finala
 
-## beta 01.1.0
+## beta 01.1.1
+*IMBUNATATIRI*
 
+*BUG FIXES*
+- cand se intra in postarile salvate aparea eroarea: Cannot update a component (`ProfileSavedPosts`) while rendering a different component (`CellRenderer`). To locate the bad setState() call inside `CellRenderer`, follow the stack trace as described in https://react.dev/link/setstate-in-render
+
+## beta 01.1.0
 *IMBUNATATIRI*
 - creat utils pentru navigarea catre profilurile utilizatorilor pentru consistenta
 - adaugat bottom-navigation si in crearea unei postari
