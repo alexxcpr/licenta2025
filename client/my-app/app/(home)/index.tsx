@@ -10,7 +10,7 @@ import AppSettingsMenu from '../../components/ui/general/AppSettingsMenu'
 import BottomNavigation from '../../app/ui/navigation/BottomNavigation'
 
 //utils
-import { navigateToProfile } from '@/app/utils/Navigation';
+import navigateToProfile from '@/app/utils/Navigation';
 
 // Tipul datelor pentru un post în feed
 interface FeedItem {

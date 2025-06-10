@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { useUser } from '@clerk/clerk-expo';
 
 //utils
-import { navigateToProfile } from '@/app/utils/Navigation';
+import navigateToProfile from '@/app/utils/Navigation';
 
 // Definim tipurile de pagini active posibile
 export type ActivePage = 'home' | 'explore' | 'post' | 'chats' | 'profile';

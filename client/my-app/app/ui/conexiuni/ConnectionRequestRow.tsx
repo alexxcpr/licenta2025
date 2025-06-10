@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router';
 import ConfirmationModal from './ConfirmationModal';
 
 //utils
-import { navigateToProfile } from '@/app/utils/Navigation';
+import navigateToProfile from '@/app/utils/Navigation';
 
 interface ConnectionRequestRowProps {
   request: {

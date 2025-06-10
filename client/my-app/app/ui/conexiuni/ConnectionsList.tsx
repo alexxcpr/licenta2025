@@ -14,6 +14,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/utils/supabase';
 import { router } from 'expo-router';
 
+//utils
+import navigateToProfile from '@/app/utils/Navigation';
+
 // Interfața pentru proprietățile componentei
 interface ConnectionsListProps {
   visible: boolean;
@@ -334,12 +337,8 @@ const ConnectionsList: React.FC<ConnectionsListProps> = ({
 
   // Navighează către profilul utilizatorului
   const navigateToProfile = (profileUserId: string) => {
+    navigateToProfile(profileUserId);
     onClose();
-    // Corectăm ruta pentru a ne asigura că este validă
-    router.push({
-      pathname: '/(profile)/users/[id]',
-      params: { id: profileUserId }
-    });
   };
 
   // Rendăm un element din lista de conexiuni

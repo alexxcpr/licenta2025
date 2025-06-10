@@ -13,7 +13,7 @@ import { supabase } from '../../../utils/supabase';
 import ConnectionButton from '../../ui/conexiuni/ConnectionButton';
 
 //utils
-import { navigateToProfile } from '@/app/utils/Navigation';
+import navigateToProfile from '@/app/utils/Navigation';
 
 // Interfețe pentru datele utilizatorului și informații suplimentare
 interface UserData {

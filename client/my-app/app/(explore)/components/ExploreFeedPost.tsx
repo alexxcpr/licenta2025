@@ -9,7 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 //utils
-import { navigateToProfile } from '@/app/utils/Navigation';
+import navigateToProfile from '@/app/utils/Navigation';
 
 // Interfețe pentru datele postării și utilizatorului
 interface PostData {
