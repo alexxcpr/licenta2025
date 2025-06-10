@@ -10,12 +10,15 @@ import {
   Alert,
   Modal,
   FlatList,
-  Image
+  Image,
+  SafeAreaView
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useUser } from '@clerk/clerk-expo';
 import { supabase } from '../../utils/supabase';
 import { Ionicons } from '@expo/vector-icons';
+import { getApiUrl } from '../../config/backend';
+import BottomNavigation from '../ui/navigation/BottomNavigation';
 
 // Definim interfața pentru un utilizator
 interface User {
@@ -155,6 +158,38 @@ export default function CreateChatScreen() {
     setLoading(true);
     
     try {
+      // Verificăm dacă este o conversație privată (doar cu un utilizator)
+      // În acest caz, vom verifica dacă există deja o conversație între cei doi utilizatori
+      if (selectedUsers.length === 1) {
+        const otherUserId = selectedUsers[0].id_user;
+        
+        // Facem o cerere API pentru a verifica dacă există deja o conversație
+        const response = await fetch(getApiUrl(`/conversations/check-existing?userId=${user.id}&otherUserId=${otherUserId}`), {
+          headers: {
+            'ngrok-skip-browser-warning': 'true',
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        if (!response.ok) {
+          console.error(`Eroare HTTP: ${response.status} - ${response.statusText}`);
+          throw new Error(`Eroare HTTP: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Dacă există deja o conversație, redirectăm către ea
+        if (data.status === 'success' && data.data.exists) {
+          setLoading(false);
+          
+          console.log('Conversație existentă găsită, redirectăm către ea:', data.data.conversation.id_chat_room);
+          
+          router.push(`/(chats)/${data.data.conversation.id_chat_room}`);
+          
+          return;
+        }
+      }
+      
       // 1. Inserăm camera de chat în baza de date
       const { data: chatRoomData, error: chatRoomError } = await supabase
         .from('chat_rooms')
@@ -253,83 +288,85 @@ export default function CreateChatScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <Text style={styles.title}>Creează o conversație nouă</Text>
-      
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Nume</Text>
-        <TextInput
-          style={styles.input}
-          value={name}
-          onChangeText={setName}
-          placeholder="Introduceți un nume pentru conversație"
-          placeholderTextColor="#888"
-        />
-      </View>
-      
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Descriere (opțional)</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Adăugați o descriere pentru conversație"
-          placeholderTextColor="#888"
-          multiline
-          numberOfLines={4}
-        />
-      </View>
-      
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Membri ({selectedUsers.length})</Text>
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView style={styles.container} contentContainerStyle={[styles.contentContainer, { paddingBottom: 80 }]}>
+        <Text style={styles.title}>Creează o conversație nouă</Text>
         
-        <TouchableOpacity 
-          style={styles.addMemberButton}
-          onPress={toggleModal}
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Nume</Text>
+          <TextInput
+            style={styles.input}
+            value={name}
+            onChangeText={setName}
+            placeholder="Introduceți un nume pentru conversație"
+            placeholderTextColor="#888"
+          />
+        </View>
+        
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Descriere (opțional)</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={description}
+            onChangeText={setDescription}
+            placeholder="Adăugați o descriere pentru conversație"
+            placeholderTextColor="#888"
+            multiline
+            numberOfLines={4}
+          />
+        </View>
+        
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Membri ({selectedUsers.length})</Text>
+          
+          <TouchableOpacity 
+            style={styles.addMemberButton}
+            onPress={toggleModal}
+          >
+            <Ionicons name="person-add" size={20} color="#007AFF" />
+            <Text style={styles.addMemberButtonText}>Adaugă membri</Text>
+          </TouchableOpacity>
+          
+          {selectedUsers.length > 0 && (
+            <View style={styles.selectedUsersContainer}>
+              {selectedUsers.map(user => (
+                <View key={user.id_user} style={styles.selectedUserItem}>
+                  <Image 
+                    source={{ 
+                      uri: user.profile_picture || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png'
+                    }} 
+                    style={styles.selectedUserAvatar}
+                  />
+                  <Text style={styles.selectedUserName} numberOfLines={1}>
+                    {user.username}
+                  </Text>
+                  <TouchableOpacity 
+                    onPress={() => toggleUserSelection(user)}
+                    style={styles.removeUserButton}
+                  >
+                    <Ionicons name="close-circle" size={20} color="#FF3B30" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+        
+        <TouchableOpacity
+          style={[
+            styles.button,
+            (!name.trim() || selectedUsers.length === 0 || loading) && styles.buttonDisabled
+          ]}
+          onPress={createChatRoom}
+          disabled={!name.trim() || selectedUsers.length === 0 || loading}
         >
-          <Ionicons name="person-add" size={20} color="#007AFF" />
-          <Text style={styles.addMemberButtonText}>Adaugă membri</Text>
+          {loading ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={styles.buttonText}>Creează conversația</Text>
+          )}
         </TouchableOpacity>
-        
-        {selectedUsers.length > 0 && (
-          <View style={styles.selectedUsersContainer}>
-            {selectedUsers.map(user => (
-              <View key={user.id_user} style={styles.selectedUserItem}>
-                <Image 
-                  source={{ 
-                    uri: user.profile_picture || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png'
-                  }} 
-                  style={styles.selectedUserAvatar}
-                />
-                <Text style={styles.selectedUserName} numberOfLines={1}>
-                  {user.username}
-                </Text>
-                <TouchableOpacity 
-                  onPress={() => toggleUserSelection(user)}
-                  style={styles.removeUserButton}
-                >
-                  <Ionicons name="close-circle" size={20} color="#FF3B30" />
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        )}
-      </View>
-      
-      <TouchableOpacity
-        style={[
-          styles.button,
-          (!name.trim() || selectedUsers.length === 0 || loading) && styles.buttonDisabled
-        ]}
-        onPress={createChatRoom}
-        disabled={!name.trim() || selectedUsers.length === 0 || loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" size="small" />
-        ) : (
-          <Text style={styles.buttonText}>Creează conversația</Text>
-        )}
-      </TouchableOpacity>
+      </ScrollView>
       
       {/* Modal pentru selecția membrilor */}
       <Modal
@@ -369,7 +406,11 @@ export default function CreateChatScreen() {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+      
+      <View style={styles.bottomNavigation}>
+        <BottomNavigation activePage="chats" />
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -564,5 +605,20 @@ const styles = StyleSheet.create({
     marginTop: 20,
     fontSize: 16,
     color: '#666',
+  },
+  bottomNavigation: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    zIndex: 100,
   },
 }); 

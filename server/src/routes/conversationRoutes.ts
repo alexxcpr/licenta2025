@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { getConversation, getUserConversations, deleteConversation, sendMessage } from '../controllers/conversationController';
+import { getConversation, getUserConversations, deleteConversation, sendMessage, findExistingConversation } from '../controllers/conversationController';
 
 const router = Router();
 
@@ -26,6 +26,9 @@ const deleteConversationMiddleware = (req: Request, res: Response, next: NextFun
   
   next();
 };
+
+// Ruta pentru verificarea existenței unei conversații între doi utilizatori
+router.get('/check-existing', findExistingConversation as any);
 
 // Ruta pentru obținerea conversațiilor unui utilizator
 router.get('/', getUserConversations as any);

@@ -393,6 +393,13 @@ export default function PostDetailModal({
     setActionsDialogVisible(!actionsDialogVisible);
   };
 
+  // Funcții pentru gestionarea acțiunilor din dialog
+  const handleReport = () => {
+    console.log('Raportare postare:', post?.id_post);
+    // Adaugă aici logica de raportare
+    Alert.alert('Mulțumim', 'Raportarea ta a fost trimisă și va fi analizată.');
+  };
+
   if (!post || !postUser) return null;
 
   return (
@@ -472,7 +479,7 @@ export default function PostDetailModal({
                         <View key={comment.id_comment} style={styles.commentItem}>
                           <View style={styles.commentHeader}>
                             <Image 
-                              source={{ uri: comment.user?.avatar_url || 'https://via.placeholder.com/150' }}
+                              source={{ uri: comment.user?.avatar_url || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png' }}
                               style={styles.commentAvatar}
                             />
                             <View style={styles.commentInfo}>
@@ -489,6 +496,15 @@ export default function PostDetailModal({
               </SafeAreaView>
             </Animated.View>
           </PanGestureHandler>
+
+          {/* Dialog opțiuni postare */}
+          <PostOptionsDialog
+            visible={actionsDialogVisible}
+            onClose={() => setActionsDialogVisible(false)}
+            onReport={handleReport}
+            onDelete={handleDelete}
+            canDelete={currentUserId === post.id_user}
+          />
         </View>
       </GestureHandlerRootView>
     </Modal>

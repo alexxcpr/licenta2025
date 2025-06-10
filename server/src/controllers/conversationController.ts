@@ -49,6 +49,127 @@ interface ConversationSummary {
   date_updated: string;
 }
 
+// Verifică dacă există deja o conversație între doi utilizatori
+export const findExistingConversation = async (req: Request, res: Response) => {
+  try {
+    const { userId, otherUserId } = req.query;
+    
+    console.log('Verificare conversație existentă între utilizatorii:', userId, 'și', otherUserId);
+    
+    if (!userId || !otherUserId) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'ID-urile ambilor utilizatori sunt necesare'
+      });
+    }
+
+    // Găsim toate chat room-urile în care participă primul utilizator
+    const { data: userChatRooms, error: userChatRoomsError } = await supabase
+      .from('chat_room_individual')
+      .select('id_chat_room')
+      .eq('id_user', userId);
+
+    if (userChatRoomsError) {
+      console.error('Eroare la obținerea chat room-urilor pentru utilizatorul 1:', userChatRoomsError);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Eroare la verificarea conversațiilor existente',
+        error: userChatRoomsError.message
+      });
+    }
+
+    if (!userChatRooms || userChatRooms.length === 0) {
+      // Utilizatorul nu are nicio conversație
+      return res.json({
+        status: 'success',
+        data: { exists: false }
+      });
+    }
+
+    const chatRoomIds = userChatRooms.map(item => item.id_chat_room);
+
+    // Verificăm dacă al doilea utilizator participă în vreunul din aceste chat room-uri
+    const { data: otherUserChatRooms, error: otherUserChatRoomsError } = await supabase
+      .from('chat_room_individual')
+      .select('id_chat_room')
+      .eq('id_user', otherUserId)
+      .in('id_chat_room', chatRoomIds);
+
+    if (otherUserChatRoomsError) {
+      console.error('Eroare la verificarea participării utilizatorului 2:', otherUserChatRoomsError);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Eroare la verificarea conversațiilor existente',
+        error: otherUserChatRoomsError.message
+      });
+    }
+
+    if (!otherUserChatRooms || otherUserChatRooms.length === 0) {
+      // Nu există o conversație între cei doi utilizatori
+      return res.json({
+        status: 'success',
+        data: { exists: false }
+      });
+    }
+
+    // Pentru fiecare chat room comun, verificăm dacă este o conversație privată (doar 2 participanți)
+    for (const room of otherUserChatRooms) {
+      const { data: participantsCount, error: countError } = await supabase
+        .from('chat_room_individual')
+        .select('id_user', { count: 'exact' })
+        .eq('id_chat_room', room.id_chat_room);
+
+      if (countError) {
+        console.error('Eroare la numărarea participanților:', countError);
+        continue;
+      }
+
+      // Dacă există exact 2 participanți, înseamnă că este o conversație privată între cei doi utilizatori
+      if (participantsCount && participantsCount.length === 2) {
+        // Obținem detaliile conversației
+        const { data: chatRoom, error: chatRoomError } = await supabase
+          .from('chat_rooms')
+          .select('*')
+          .eq('id_chat_room', room.id_chat_room)
+          .single();
+
+        if (chatRoomError || !chatRoom) {
+          console.error('Eroare la obținerea detaliilor conversației:', chatRoomError);
+          continue;
+        }
+
+        console.log(`Conversație existentă găsită: ${chatRoom.id_chat_room}`);
+        
+        return res.json({
+          status: 'success',
+          data: {
+            exists: true,
+            conversation: {
+              id_chat_room: chatRoom.id_chat_room,
+              denumire: chatRoom.denumire,
+              descriere: chatRoom.descriere
+            }
+          }
+        });
+      }
+    }
+
+    // Dacă am ajuns aici, nu există o conversație privată între cei doi utilizatori
+    return res.json({
+      status: 'success',
+      data: { exists: false }
+    });
+
+  } catch (error) {
+    console.error('Eroare la verificarea conversației existente:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Eroare internă a serverului',
+      error: error instanceof Error ? error.message : 'Eroare necunoscută'
+    });
+  }
+};
+
 // Obține detaliile unei conversații specifice
 export const getConversation = async (req: Request, res: Response) => {
   try {

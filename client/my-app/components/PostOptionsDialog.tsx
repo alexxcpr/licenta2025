@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -140,10 +140,20 @@ const PostOptionsDialog = ({ visible, onClose, onReport, onDelete, canDelete }: 
     title: '',
     message: ''
   });
+  
+  // Pentru a evita ca dialogul principal să dispară
+  const [mainDialogVisible, setMainDialogVisible] = useState(visible);
+  
+  // Actualizăm mainDialogVisible când props visible se schimbă
+  useEffect(() => {
+    setMainDialogVisible(visible);
+  }, [visible]);
 
   // Gestionarea raportării
   const handleReportPress = () => {
-    onClose();
+    // Ascundem dialogul principal (dar nu îl închidem complet)
+    setMainDialogVisible(false);
+    // Afișăm dialogul de confirmare
     setConfirmReportVisible(true);
   };
 
@@ -151,33 +161,50 @@ const PostOptionsDialog = ({ visible, onClose, onReport, onDelete, canDelete }: 
     setConfirmReportVisible(false);
     if (onReport) onReport();
     
-    // Afișăm notificarea de mulțumire
-    setTimeout(() => {
-      setNotification({
-        title: 'Mulțumim',
-        message: 'Raportarea ta a fost trimisă și va fi analizată.'
-      });
-      setNotificationVisible(true);
-    }, 300);
+    // Ascundem dialogul de confirmare și afișăm notificarea
+    setNotification({
+      title: 'Mulțumim',
+      message: 'Raportarea ta a fost trimisă și va fi analizată.'
+    });
+    setNotificationVisible(true);
+    
+    // Nu mai închid dialogul principal aici (onClose) 
+    // Dialogul de notificare va avea propriul buton de închidere
   };
 
   const handleReportCancel = () => {
     setConfirmReportVisible(false);
+    // Dacă utilizatorul anulează, redeschide dialogul principal
+    setMainDialogVisible(true);
   };
 
   // Gestionarea ștergerii
   const handleDeletePress = () => {
-    onClose();
+    // Ascundem dialogul principal (dar nu îl închidem complet)
+    setMainDialogVisible(false);
+    // Afișăm dialogul de confirmare
     setConfirmDeleteVisible(true);
   };
 
   const handleDeleteConfirm = () => {
     setConfirmDeleteVisible(false);
     if (onDelete) onDelete();
+    
+    // Închiderea completă (notificăm părintele)
+    onClose();
   };
 
   const handleDeleteCancel = () => {
     setConfirmDeleteVisible(false);
+    // Dacă utilizatorul anulează, redeschide dialogul principal
+    setMainDialogVisible(true);
+  };
+
+  // Dialog de notificare
+  const handleNotificationClose = () => {
+    setNotificationVisible(false);
+    // Acum închidem complet dialogul principal după ce s-a închis notificarea
+    onClose();
   };
 
   if (!visible) return null;
@@ -186,7 +213,7 @@ const PostOptionsDialog = ({ visible, onClose, onReport, onDelete, canDelete }: 
     <>
       <Modal
         transparent={true}
-        visible={visible}
+        visible={mainDialogVisible}
         animationType="fade"
         onRequestClose={onClose}
       >
@@ -250,7 +277,7 @@ const PostOptionsDialog = ({ visible, onClose, onReport, onDelete, canDelete }: 
         title={notification.title}
         message={notification.message}
         buttonText="OK"
-        onClose={() => setNotificationVisible(false)}
+        onClose={handleNotificationClose}
       />
     </>
   );
