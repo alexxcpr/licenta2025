@@ -12,6 +12,9 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../../../utils/supabase';
 import ConnectionButton from '../../ui/conexiuni/ConnectionButton';
 
+//utils
+import { navigateToProfile } from '@/app/utils/Navigation';
+
 // Interfețe pentru datele utilizatorului și informații suplimentare
 interface UserData {
   id_user: string;
@@ -54,7 +57,6 @@ export default function ExploreNewConnection({
   currentUserId,
   onConnectionChange,
 }: ExploreNewConnectionProps) {
-  const router = useRouter();
   const [enrichedUser, setEnrichedUser] = useState<EnrichedUserData>(user);
   const [loading, setLoading] = useState(true);
 
@@ -116,15 +118,11 @@ export default function ExploreNewConnection({
     enrichUserData();
   }, [user]);
 
-  const handleUserPress = () => {
-    router.push(`/(profile)/${user.id_user}` as any);
-  };
-
   const profileImageUrl = enrichedUser.profile_picture || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png';
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.userCard} onPress={handleUserPress}>
+      <TouchableOpacity style={styles.userCard} onPress={() => navigateToProfile(user.id_user)}>
         {/* Poza de profil */}
         <Image source={{ uri: profileImageUrl }} style={styles.profileImage} />
         

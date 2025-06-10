@@ -1,6 +1,19 @@
 # Update notes
 
-⬇️alpha -> 🔜beta -> 🔜release candidate(RC) -> 🔜versiune finala
+✅alpha -> ⬇️beta -> 🔜release candidate(RC) -> 🔜versiune finala
+
+## beta 01.1.0
+
+*IMBUNATATIRI*
+- creat utils pentru navigarea catre profilurile utilizatorilor pentru consistenta
+- adaugat bottom-navigation si in crearea unei postari
+- facut SSR(Server Side Rendering) pentru profilurile utilizatorilor si conversatiilor(chat)
+- consisenta in functionalitatea pentru handleLike, handleComment, handleSave a postarilor
+  
+*BUG FIXES*
+- rutarea catre profilurile utilizatorilor nu se facea corect
+- daca se adauga " " in username, dadea eroare pentru ca nu se putea salva in clerk, aparea inconsistenta intre clerk si supabase
+- daca userul deschidea un chat si nu erau mesaje, aparea un mesaj de eroare in consola si se bloca aplicatia
 
 ## alpha 01.3.0
 *IMPLEMENTARI NOI*

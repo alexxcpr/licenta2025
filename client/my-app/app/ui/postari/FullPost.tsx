@@ -5,6 +5,7 @@ import PostContent from './PostContent';
 import PostActions from './PostActions';
 import PostComments from './PostComments';
 import { supabase } from '../../../utils/supabase';
+import { toggleLike, toggleSave } from '../../../utils/postActions';
 
 // Interfețe pentru tipurile de date
 interface PostData {
@@ -44,9 +45,8 @@ interface FullPostProps {
   onOptionsPress: (postId: number) => void;
   onPostPress: (post: PostData) => void;
   onUserPress: (userId: string) => void;
-  // Nu mai folosim isLiked și isSaved ca sursă principală de adevăr aici
-  // isLiked: initialIsLiked, 
-  // isSaved: initialIsSaved 
+  isLiked?: boolean;
+  isSaved?: boolean;
 }
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -63,13 +63,34 @@ const FullPost = ({
   onOptionsPress,
   onPostPress,
   onUserPress,
+  isLiked: isLikedProp,
+  isSaved: isSavedProp,
 }: FullPostProps) => {
   
-  const [internalIsLiked, setInternalIsLiked] = useState(false); // Inițializare cu false
-  const [internalIsSaved, setInternalIsSaved] = useState(false); // Inițializare cu false
+  const [internalIsLiked, setInternalIsLiked] = useState(isLikedProp || false);
+  const [internalIsSaved, setInternalIsSaved] = useState(isSavedProp || false);
+
+  // Actualizăm starea internă atunci când props-urile se schimbă
+  useEffect(() => {
+    if (isLikedProp !== undefined) {
+      setInternalIsLiked(isLikedProp);
+    }
+  }, [isLikedProp]);
 
   useEffect(() => {
+    if (isSavedProp !== undefined) {
+      setInternalIsSaved(isSavedProp);
+    }
+  }, [isSavedProp]);
+
+  // Verificăm starea din baza de date doar dacă props-urile nu sunt furnizate
+  useEffect(() => {
     const fetchLikeAndSaveStatus = async () => {
+      // Dacă props-urile sunt definite, nu mai facem interogare la baza de date
+      if (isLikedProp !== undefined && isSavedProp !== undefined) {
+        return;
+      }
+      
       if (!currentUserId || !post || !post.id_post) {
         setInternalIsLiked(false); // Resetăm în caz că datele nu sunt complete
         setInternalIsSaved(false);
@@ -77,34 +98,38 @@ const FullPost = ({
       }
 
       try {
-        // Verifică starea like
-        const { data: likeData, error: likeError } = await supabase
-          .from('like')
-          .select('id_like') // Selectăm doar un câmp mic pentru a verifica existența
-          .eq('id_post', post.id_post)
-          .eq('id_user', currentUserId)
-          .maybeSingle(); // Returnează un singur rând sau null
+        // Verifică starea like doar dacă isLikedProp nu este furnizat
+        if (isLikedProp === undefined) {
+          const { data: likeData, error: likeError } = await supabase
+            .from('like')
+            .select('id_like') // Selectăm doar un câmp mic pentru a verifica existența
+            .eq('id_post', post.id_post)
+            .eq('id_user', currentUserId)
+            .maybeSingle(); // Returnează un singur rând sau null
 
-        if (likeError) {
-          console.error('Eroare la verificarea like-ului:', likeError);
-          setInternalIsLiked(false); // Presupunem că nu există like în caz de eroare
-        } else {
-          setInternalIsLiked(!!likeData); // !!likeData convertește null/obiect în boolean
+          if (likeError) {
+            console.error('Eroare la verificarea like-ului:', likeError);
+            setInternalIsLiked(false); // Presupunem că nu există like în caz de eroare
+          } else {
+            setInternalIsLiked(!!likeData); // !!likeData convertește null/obiect în boolean
+          }
         }
 
-        // Verifică starea save
-        const { data: saveData, error: saveError } = await supabase
-          .from('saved_post')
-          .select('id_saved_post') // Selectăm doar un câmp mic
-          .eq('id_post', post.id_post)
-          .eq('id_user', currentUserId)
-          .maybeSingle();
+        // Verifică starea save doar dacă isSavedProp nu este furnizat
+        if (isSavedProp === undefined) {
+          const { data: saveData, error: saveError } = await supabase
+            .from('saved_post')
+            .select('id_saved_post') // Selectăm doar un câmp mic
+            .eq('id_post', post.id_post)
+            .eq('id_user', currentUserId)
+            .maybeSingle();
 
-        if (saveError) {
-          console.error('Eroare la verificarea salvării:', saveError);
-          setInternalIsSaved(false); // Presupunem că nu există save în caz de eroare
-        } else {
-          setInternalIsSaved(!!saveData);
+          if (saveError) {
+            console.error('Eroare la verificarea salvării:', saveError);
+            setInternalIsSaved(false); // Presupunem că nu există save în caz de eroare
+          } else {
+            setInternalIsSaved(!!saveData);
+          }
         }
       } catch (error) {
         console.error('Eroare generală la fetchLikeAndSaveStatus:', error);
@@ -114,7 +139,7 @@ const FullPost = ({
     };
 
     fetchLikeAndSaveStatus();
-  }, [post, currentUserId]); // Rulează când se schimbă postarea sau utilizatorul
+  }, [post, currentUserId, isLikedProp, isSavedProp]); // Rulează când se schimbă postarea, utilizatorul sau props-urile
 
   const handleLikeToggle = async () => {
     if (!currentUserId) {
@@ -122,32 +147,17 @@ const FullPost = ({
       return;
     }
 
-    if (internalIsLiked) {
-      // Unlike: Șterge din tabelul like
-      const { error } = await supabase
-        .from('like')
-        .delete()
-        .match({ id_post: post.id_post, id_user: currentUserId });
+    try {
+      // Folosim utilitatea toggleLike din postActions.ts
+      const newLikeState = await toggleLike(post.id_post, currentUserId, internalIsLiked);
+      setInternalIsLiked(newLikeState);
       
-      if (error) {
-        console.error('Eroare la eliminarea like-ului:', error);
-      } else {
-        setInternalIsLiked(false);
-      }
-    } else {
-      // Like: Inserează în tabelul like
-      const { error } = await supabase
-        .from('like')
-        .insert([{ id_post: post.id_post, id_user: currentUserId, date_created: new Date(), date_updated: new Date() }]);
-      
-      if (error) {
-        console.error('Eroare la adăugarea like-ului:', error);
-      } else {
-        setInternalIsLiked(true);
-      }
-    }
-    if (onLike) {
+      // Notificăm componenta părinte despre schimbare
+      if (onLike) {
         onLike(post.id_post);
+      }
+    } catch (error) {
+      console.error('Eroare la procesarea like-ului:', error);
     }
   };
 
@@ -157,32 +167,17 @@ const FullPost = ({
       return;
     }
 
-    if (internalIsSaved) {
-      // Unsave: Șterge din tabelul saved_post
-      const { error } = await supabase
-        .from('saved_post')
-        .delete()
-        .match({ id_post: post.id_post, id_user: currentUserId });
-
-      if (error) {
-        console.error('Eroare la eliminarea salvării:', error);
-      } else {
-        setInternalIsSaved(false);
-      }
-    } else {
-      // Save: Inserează în tabelul saved_post
-      const { error } = await supabase
-        .from('saved_post')
-        .insert([{ id_post: post.id_post, id_user: currentUserId, saved_at: new Date() }]);
+    try {
+      // Folosim utilitatea toggleSave din postActions.ts
+      const newSaveState = await toggleSave(post.id_post, currentUserId, internalIsSaved);
+      setInternalIsSaved(newSaveState);
       
-      if (error) {
-        console.error('Eroare la salvarea postării:', error);
-      } else {
-        setInternalIsSaved(true);
-      }
-    }
-    if (onSave) {
+      // Notificăm componenta părinte despre schimbare
+      if (onSave) {
         onSave(post.id_post);
+      }
+    } catch (error) {
+      console.error('Eroare la procesarea salvării:', error);
     }
   };
 

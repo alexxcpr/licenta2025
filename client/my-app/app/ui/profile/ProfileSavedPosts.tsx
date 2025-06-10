@@ -11,6 +11,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { Post } from '../../../utils/types';
 import FullPost from '../postari/FullPost';
 import { supabase } from '../../../utils/supabase';
+import { toggleLike, toggleSave, handleSend } from '../../../utils/postActions';
+
+//utils
+import navigateToProfile from '@/app/utils/Navigation';
 
 interface ProfileSavedPostsProps {
   posts: Post[];
@@ -90,48 +94,32 @@ const ProfileSavedPosts: React.FC<ProfileSavedPostsProps> = ({
   };
   
   // Funcții pentru acțiunile butoanelor
-  const handleLike = (postId: number) => {
+  const handleLike = async (postId: number) => {
+    if (!currentUserId) return;
+    
+    const isCurrentlyLiked = likedPosts[postId] || false;
+    const newLikeState = await toggleLike(postId, currentUserId, isCurrentlyLiked);
+    
     setLikedPosts(prev => ({
       ...prev,
-      [postId]: !prev[postId]
+      [postId]: newLikeState
     }));
   };
   
   const handleSend = (postId: number) => {
-    console.log('Buton send apăsat pentru postarea', postId);
+    handleSend(postId);
   };
   
   const handleSave = async (postId: number) => {
-    setSavedPosts(prev => ({
-      ...prev,
-      [postId]: !prev[postId]
-    }));
-    
     if (!currentUserId) return;
     
-    try {
-      // Dacă postarea este deja salvată, o eliminăm
-      if (savedPosts[postId]) {
-        await supabase
-          .from('saved_post')
-          .delete()
-          .eq('id_user', currentUserId)
-          .eq('id_post', postId);
-        
-        console.log('Postare eliminată din salvate:', postId);
-      } else {
-        // Altfel, o adăugăm la salvate
-        await supabase
-          .from('saved_post')
-          .insert([
-            { id_user: currentUserId, id_post: postId }
-          ]);
-        
-        console.log('Postare adăugată la salvate:', postId);
-      }
-    } catch (error) {
-      console.error('Eroare la actualizarea postărilor salvate:', error);
-    }
+    const isCurrentlySaved = savedPosts[postId] || false;
+    const newSaveState = await toggleSave(postId, currentUserId, isCurrentlySaved);
+    
+    setSavedPosts(prev => ({
+      ...prev,
+      [postId]: newSaveState
+    }));
   };
   
   // Funcție pentru gestionarea comentariilor
@@ -145,11 +133,6 @@ const ProfileSavedPosts: React.FC<ProfileSavedPostsProps> = ({
   // Funcție pentru deschiderea meniului de opțiuni
   const handleOptionsPress = (postId: number) => {
     console.log('Opțiuni pentru postarea', postId);
-  };
-  
-  // Funcție pentru navigarea la profilul unui utilizator
-  const handleUserPress = (userId: string) => {
-    console.log('Navigare la profilul utilizatorului', userId);
   };
   
   const ListEmptyComponent = () => (
@@ -191,7 +174,7 @@ const ProfileSavedPosts: React.FC<ProfileSavedPostsProps> = ({
         onSend={handleSend}
         onOptionsPress={handleOptionsPress}
         onPostPress={() => onPostPress(item)}
-        onUserPress={handleUserPress}
+        onUserPress={() => navigateToProfile(postUser.id)}
         // isLiked={!!likedPosts[item.id_post]}
         // isSaved={!!savedPosts[item.id_post]}
       />

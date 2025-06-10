@@ -7,7 +7,9 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+
+//utils
+import { navigateToProfile } from '@/app/utils/Navigation';
 
 // Interfețe pentru datele postării și utilizatorului
 interface PostData {
@@ -51,11 +53,6 @@ export default function ExploreFeedPost({
   onPostPress,
   onUserPress,
 }: ExploreFeedPostProps) {
-  const router = useRouter();
-
-  const handleUserPress = () => {
-    router.push(`/(profile)/${postUser.id}` as any);
-  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -77,7 +74,7 @@ export default function ExploreFeedPost({
   return (
     <View style={styles.container}>
       {/* Header cu informațiile utilizatorului */}
-      <TouchableOpacity style={styles.header} onPress={handleUserPress}>
+      <TouchableOpacity style={styles.header} onPress={() => navigateToProfile(postUser.id)}>
         <Image source={{ uri: profileImageUrl }} style={styles.profileImage} />
         <View style={styles.userInfo}>
           <Text style={styles.username}>{postUser.username}</Text>

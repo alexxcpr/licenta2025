@@ -5,14 +5,12 @@ import {
   StyleSheet,
   Modal,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   Image,
   ScrollView,
   SafeAreaView,
   ActivityIndicator,
   TextInput,
   Alert,
-  Pressable,
   Dimensions,
   Platform,
   StatusBar,
@@ -25,6 +23,7 @@ import PostOptionsDialog from '../../../components/PostOptionsDialog';
 import PostHeader from './PostHeader';
 import PostContent from './PostContent';
 import PostActions from './PostActions';
+import { checkPostStatus, toggleLike, toggleSave, handleSend, addComment } from '../../../utils/postActions';
 
 // Constante pentru gesturi
 const SWIPE_THRESHOLD = 80;
@@ -104,8 +103,22 @@ export default function PostDetailModal({
     if (visible && post) {
       console.log('[PostDetailModal] Date postare primite:', JSON.stringify(post, null, 2));
       loadComments();
+      loadPostStatus(); // Încărcăm starea de like și save
     }
   }, [visible, post]);
+
+  // Încărcăm starea de like și save pentru postare
+  const loadPostStatus = async () => {
+    if (!post || !currentUserId) return;
+    
+    try {
+      const { isLiked, isSaved } = await checkPostStatus(post.id_post, currentUserId);
+      setLiked(isLiked);
+      setSaved(isSaved);
+    } catch (error) {
+      console.error('Eroare la încărcarea statusului postării:', error);
+    }
+  };
 
   // Funcția de navigare înapoi cu animație
   const closeWithAnimation = () => {
@@ -235,30 +248,19 @@ export default function PostDetailModal({
     }
   };
 
-  const addComment = async () => {
+  const addNewComment = async () => {
     if (!newComment.trim() || !post || !currentUserId) return;
 
     setAddingComment(true);
     try {
-      const { data, error } = await supabase
-        .from('comment')
-        .insert([
-          {
-            content: newComment.trim(),
-            id_post: post.id_post,
-            id_user: currentUserId,
-          }
-        ])
-        .select();
-
-      if (error) {
-        console.error('Eroare la adăugarea comentariului:', error);
-        Alert.alert('Eroare', 'Nu s-a putut adăuga comentariul. Încercați din nou.');
-        return;
+      const result = await addComment(post.id_post, currentUserId, newComment.trim());
+      
+      if (result.success) {
+        setNewComment('');
+        await loadComments(); // Reîncărcăm comentariile
+      } else {
+        Alert.alert('Eroare', result.message || 'Nu s-a putut adăuga comentariul. Încercați din nou.');
       }
-
-      setNewComment('');
-      await loadComments(); // Reîncărcăm comentariile
     } catch (error) {
       console.error('Eroare la adăugarea comentariului:', error);
       Alert.alert('Eroare', 'Nu s-a putut adăuga comentariul. Încercați din nou.');
@@ -293,22 +295,23 @@ export default function PostDetailModal({
     }
   };
 
-  const handleLike = () => {
-    setLiked(!liked);
-    console.log('Buton like apăsat pentru postarea', post?.id_post);
+  const handleLikePress = async () => {
+    if (!post || !currentUserId) return;
+    
+    const newLikeState = await toggleLike(post.id_post, currentUserId, liked);
+    setLiked(newLikeState);
   };
 
-  const handleSave = () => {
-    setSaved(!saved);
-    console.log('Buton save apăsat pentru postarea', post?.id_post);
+  const handleSavePress = async () => {
+    if (!post || !currentUserId) return;
+    
+    const newSaveState = await toggleSave(post.id_post, currentUserId, saved);
+    setSaved(newSaveState);
   };
 
-  const handleReport = () => {
-    console.log(`Postarea ${post?.id_post} a fost raportată`);
-  };
-
-  const handleSend = () => {
-    console.log('Buton send apăsat pentru postarea', post?.id_post);
+  const handleSendPress = () => {
+    if (!post) return;
+    handleSend(post.id_post);
   };
 
   const handleComment = () => {
@@ -450,99 +453,42 @@ export default function PostDetailModal({
                     postId={post.id_post}
                     isLiked={liked}
                     isSaved={saved}
-                    onLike={handleLike}
+                    onLike={handleLikePress}
                     onComment={handleComment}
-                    onSend={handleSend}
-                    onSave={handleSave}
+                    onSend={handleSendPress}
+                    onSave={handleSavePress}
                   />
 
                   {/* Secțiune Comentarii - Păstrăm implementarea specifică modalului */}
                   <View style={styles.commentsSection}>
-                    <Text style={styles.commentsTitle}>
-                      Comentarii ({comments.length})
-                    </Text>
-                    
-                    {loading ? (
-                      <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="small" color="#007AFF" />
-                        <Text style={styles.loadingText}>Se încarcă comentariile...</Text>
-                      </View>
-                    ) : (
-                      <>
-                        {comments.length > 0 ? (
-                          comments.map((comment) => {
-                            return (
-                              <View key={comment.id_comment} style={styles.commentContainer}>
-                                <Image 
-                                  source={{ 
-                                    uri: comment.user?.avatar_url || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png' 
-                                  }} 
-                                  style={styles.commentAvatar} 
-                                  onError={(e) => {
-                                    console.error(`[PostDetailModal] Eroare la încărcarea avatarului pentru comentariul ${comment.id_comment}. URL încercat: ${comment.user?.avatar_url}`);
-                                    console.error('[PostDetailModal] Detalii eroare nativă avatar:', e.nativeEvent.error);
-                                  }}
-                                />
-                                <View style={styles.commentContent}>
-                                  <View style={styles.commentHeader}>
-                                    <Text style={styles.commentUser}>
-                                      { (comment.user?.username && comment.user.username.length > 20 ? comment.user.username.substring(0, 20) + '..' : comment.user?.username) || 'Utilizator necunoscut'}
-                                    </Text>
-                                    <Text style={styles.commentDate}>
-                                      {formatTimeAgo(comment.date_created)}
-                                    </Text>
-                                  </View>
-                                  <Text style={styles.commentText}>{comment.content}</Text>
-                                </View>
-                              </View>
-                            );
-                          })
-                        ) : (
-                          <Text style={styles.noCommentsText}>Nu există comentarii încă.</Text>
-                        )}
-                      </>
-                    )}
+                    <View style={styles.commentsHeader}>
+                      <Text style={styles.commentsTitle}>Comentarii</Text>
+                      <TouchableOpacity onPress={() => console.log('Navigare la comentarii')}>
+                        <Text style={styles.commentsLink}>Vezi toate</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.commentsList}>
+                      {comments.map(comment => (
+                        <View key={comment.id_comment} style={styles.commentItem}>
+                          <View style={styles.commentHeader}>
+                            <Image 
+                              source={{ uri: comment.user?.avatar_url || 'https://via.placeholder.com/150' }}
+                              style={styles.commentAvatar}
+                            />
+                            <View style={styles.commentInfo}>
+                              <Text style={styles.commentUsername}>{comment.user?.username}</Text>
+                              <Text style={styles.commentDate}>{formatTimeAgo(comment.date_created)}</Text>
+                            </View>
+                          </View>
+                          <Text style={styles.commentContent}>{comment.content}</Text>
+                        </View>
+                      ))}
+                    </View>
                   </View>
                 </ScrollView>
-
-                {/* Input pentru comentarii */}
-                <View style={styles.addCommentContainer}>
-                  <TextInput
-                    style={styles.commentInput}
-                    placeholder="Adaugă un comentariu..."
-                    placeholderTextColor="#999"
-                    value={newComment}
-                    onChangeText={setNewComment}
-                    multiline
-                    maxLength={500}
-                  />
-                  <TouchableOpacity 
-                    onPress={addComment}
-                    disabled={!newComment.trim() || addingComment}
-                    style={[
-                      styles.sendButton,
-                      (!newComment.trim() || addingComment) && styles.sendButtonDisabled
-                    ]}
-                  >
-                    {addingComment ? (
-                      <ActivityIndicator size="small" color="#007AFF" />
-                    ) : (
-                      <Ionicons name="send" size={20} color="#fff" />
-                    )}
-                  </TouchableOpacity>
-                </View>
               </SafeAreaView>
             </Animated.View>
           </PanGestureHandler>
-          
-          {/* Dialog pentru acțiunile postării */}
-          <PostOptionsDialog 
-            visible={actionsDialogVisible} 
-            onClose={toggleActionsDialog}
-            onReport={handleReport}
-            onDelete={handleDelete}
-            canDelete={isAuthor}
-          />
         </View>
       </GestureHandlerRootView>
     </Modal>
@@ -727,5 +673,33 @@ export const styles = StyleSheet.create({
   loadingText: {
     marginTop: 8,
     color: '#666',
+  },
+  commentsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  commentsLink: {
+    color: '#007AFF',
+    fontSize: 14,
+  },
+  commentsList: {
+    marginTop: 5,
+  },
+  commentItem: {
+    marginBottom: 15,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  commentInfo: {
+    flex: 1,
+    marginLeft: 5,
+  },
+  commentUsername: {
+    fontWeight: 'bold',
+    fontSize: 14,
+    color: '#333',
   },
 }); 

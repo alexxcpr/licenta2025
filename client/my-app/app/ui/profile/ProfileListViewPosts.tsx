@@ -12,6 +12,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { Post } from '../../../utils/types';
 import FullPost from '../postari/FullPost';
 import { supabase } from '../../../utils/supabase';
+import { toggleLike, toggleSave, handleSend } from '../../../utils/postActions';
+
+//utils
+import navigateToProfile from '@/app/utils/Navigation';
 
 interface ProfileListViewPostsProps {
   posts: Post[];
@@ -115,11 +119,6 @@ const ProfileListViewPosts: React.FC<ProfileListViewPostsProps> = ({
     console.log('Opțiuni pentru postarea', postId);
   };
   
-  // Funcție pentru navigarea la profilul unui utilizator
-  const handleUserPress = (userId: string) => {
-    console.log('Navigare la profilul utilizatorului', userId);
-  };
-  
   const ListEmptyComponent = () => (
     <View style={styles.emptyContainer}>
       <Ionicons name="list-outline" size={60} color="#ccc" />
@@ -161,7 +160,7 @@ const ProfileListViewPosts: React.FC<ProfileListViewPostsProps> = ({
         onSend={handleSend}
         onOptionsPress={handleOptionsPress}
         onPostPress={() => onPostPress(item)}
-        onUserPress={handleUserPress}
+        onUserPress={() => navigateToProfile(postUser.id)}
         // isLiked={!!likedPosts[item.id_post]}
         // isSaved={!!savedPosts[item.id_post]}
       />

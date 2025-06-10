@@ -17,6 +17,7 @@
     "preset": "jest-expo"
   },
   "dependencies": {
+    "@clerk/backend-core": "^2.13.2",
     "@clerk/clerk-expo": "^2.11.8",
     "@expo/ngrok": "^4.1.0",
     "@expo/vector-icons": "^14.1.0",

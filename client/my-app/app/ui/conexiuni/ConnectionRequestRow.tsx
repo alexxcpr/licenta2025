@@ -6,6 +6,9 @@ import { useUser } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import ConfirmationModal from './ConfirmationModal';
 
+//utils
+import { navigateToProfile } from '@/app/utils/Navigation';
+
 interface ConnectionRequestRowProps {
   request: {
     id_connection_request: string;
@@ -140,18 +143,13 @@ const ConnectionRequestRow: React.FC<ConnectionRequestRowProps> = ({
     }
   };
 
-  // Navigare către profilul utilizatorului
-  const navigateToProfile = () => {
-    router.push(`/(profile)/${request.id_user_sender}`);
-  };
-
   return (
     <>
       <View style={styles.container}>
         {/* Partea stângă - Informații utilizator - acum clickable */}
         <TouchableOpacity 
           style={styles.userInfo} 
-          onPress={navigateToProfile}
+          onPress={() => navigateToProfile(request.id_user_sender)}
           accessibilityLabel={`Vezi profilul lui ${request.user.username}`}
         >
           <Image 

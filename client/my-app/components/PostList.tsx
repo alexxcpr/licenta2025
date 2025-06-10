@@ -7,6 +7,10 @@ import { useUser } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import FullPost from '../app/ui/postari/FullPost';
 import PostDetailOpener from './PostDetailOpener';
+import { toggleLike, toggleSave, handleSend as postActionHandleSend, addComment, checkPostStatus } from '../utils/postActions';
+
+//utils
+import navigateToProfile from '@/app/utils/Navigation';
 
 // Definim interfața pentru datele din tabelul post conform structurii din Supabase
 interface PostData {
@@ -276,31 +280,134 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
     Alert.alert('Succes', 'Postarea a fost raportată. Mulțumim pentru feedback!');
   };
   
+  // Funcție pentru a încărca starea like/save pentru toate postările
+  const loadPostStatuses = useCallback(async () => {
+    if (!user?.id || posts.length === 0) return;
+    
+    const likeStatus: {[postId: number]: boolean} = {};
+    const saveStatus: {[postId: number]: boolean} = {};
+    
+    for (const post of posts) {
+      try {
+        const { isLiked, isSaved } = await checkPostStatus(post.id_post, user.id);
+        likeStatus[post.id_post] = isLiked;
+        saveStatus[post.id_post] = isSaved;
+      } catch (error) {
+        console.error(`Eroare la verificarea statusului pentru postarea ${post.id_post}:`, error);
+      }
+    }
+    
+    setLikedPosts(likeStatus);
+    setSavedPosts(saveStatus);
+  }, [posts, user?.id]);
+
+  // Încărcăm starea postărilor după ce datele sunt încărcate
+  useEffect(() => {
+    if (!loading && posts.length > 0 && user?.id) {
+      loadPostStatuses();
+    }
+  }, [loading, posts, user?.id, loadPostStatuses]);
+
   // Funcție pentru like la o postare
-  const handleLike = (postId: number) => {
+  const handleLike = async (postId: number) => {
+    if (!user?.id) {
+      Alert.alert('Atenție', 'Trebuie să fiți autentificat pentru a aprecia o postare.');
+      return;
+    }
+    
+    const currentLikeStatus = likedPosts[postId] || false;
+    
+    // Actualizăm starea UI imediat pentru feedback instantaneu
     setLikedPosts(prev => ({
       ...prev,
-      [postId]: !prev[postId]
+      [postId]: !currentLikeStatus
     }));
+    
+    // Apelăm API-ul pentru a actualiza baza de date
+    try {
+      const newLikeStatus = await toggleLike(postId, user.id, currentLikeStatus);
+      
+      // Dacă rezultatul din backend diferă de așteptări, actualizăm UI-ul
+      if (newLikeStatus !== !currentLikeStatus) {
+        setLikedPosts(prev => ({
+          ...prev,
+          [postId]: newLikeStatus
+        }));
+      }
+    } catch (error) {
+      console.error('Eroare la actualizarea stării like:', error);
+      
+      // Revertim la starea inițială în caz de eroare
+      setLikedPosts(prev => ({
+        ...prev,
+        [postId]: currentLikeStatus
+      }));
+      
+      Alert.alert('Eroare', 'Nu s-a putut actualiza aprecierea. Încercați din nou.');
+    }
+  };
+  
+  // Funcție pentru comentarii la o postare
+  const handleComment = (postId: number) => {
+    // Folosim openPostDetail din PostDetailOpener pentru a deschide detaliile postării
+    // Această funcționalitate este deja implementată în renderul FlatList-ului
+    const post = posts.find(p => p.id_post === postId);
+    if (!post) return;
+    
+    const postUser = users[post.id_user] || {
+      id: post.id_user,
+      username: 'Utilizator necunoscut',
+      avatar_url: undefined
+    };
+    
+    // Vom apela openPostDetail care este transmisă ca render prop în FlatList
   };
   
   // Funcție pentru trimiterea unei postări
   const handleSend = (postId: number) => {
-    Alert.alert('Distribuire', 'Funcționalitatea de distribuire va fi implementată în curând.');
+    postActionHandleSend(postId);
   };
   
   // Funcție pentru salvarea unei postări
-  const handleSave = (postId: number) => {
+  const handleSave = async (postId: number) => {
+    if (!user?.id) {
+      Alert.alert('Atenție', 'Trebuie să fiți autentificat pentru a salva o postare.');
+      return;
+    }
+    
+    const currentSaveStatus = savedPosts[postId] || false;
+    
+    // Actualizăm starea UI imediat pentru feedback instantaneu
     setSavedPosts(prev => ({
       ...prev,
-      [postId]: !prev[postId]
+      [postId]: !currentSaveStatus
     }));
     
-    const isSaved = !savedPosts[postId];
-    Alert.alert(
-      isSaved ? 'Postare salvată' : 'Postare nesalvată',
-      isSaved ? 'Postarea a fost adăugată la favorite' : 'Postarea a fost eliminată din favorite'
-    );
+    // Apelăm API-ul pentru a actualiza baza de date
+    try {
+      const newSaveStatus = await toggleSave(postId, user.id, currentSaveStatus);
+      
+      // Dacă rezultatul din backend diferă de așteptări, actualizăm UI-ul
+      if (newSaveStatus !== !currentSaveStatus) {
+        setSavedPosts(prev => ({
+          ...prev,
+          [postId]: newSaveStatus
+        }));
+      }
+      
+      const message = newSaveStatus ? 'Postare salvată cu succes' : 'Postare eliminată din salvate';
+      Alert.alert('Succes', message);
+    } catch (error) {
+      console.error('Eroare la actualizarea stării salvării:', error);
+      
+      // Revertim la starea inițială în caz de eroare
+      setSavedPosts(prev => ({
+        ...prev,
+        [postId]: currentSaveStatus
+      }));
+      
+      Alert.alert('Eroare', 'Nu s-a putut actualiza salvarea. Încercați din nou.');
+    }
   };
   
   // Funcție pentru ștergerea unei postări
@@ -324,13 +431,6 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
     } catch (error) {
       console.error('Eroare la ștergerea postării:', error);
       Alert.alert('Eroare', 'A apărut o eroare la ștergerea postării.');
-    }
-  };
-  
-  // Funcție pentru a naviga la profilul unui utilizator
-  const navigateToProfile = (userId: string) => {
-    if (userId) {
-      router.push(`/(profile)/${userId}` as any);
     }
   };
 
@@ -378,6 +478,7 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
                 post={item}
                 postUser={users[item.id_user] || { id: item.id_user, username: 'Utilizator necunoscut' }}
                 comments={comments[item.id_post] || []}
+                currentUserId={user?.id}
                 onLike={() => handleLike(item.id_post)}
                 onComment={() => {
                   const postUser = users[item.id_user] || {
@@ -397,11 +498,15 @@ const PostList = forwardRef(({ onRefreshTriggered }: Props, ref) => {
                   };
                   openPostDetail(item, postUser);
                 }}
-                onUserPress={() => navigateToProfile(item.id_user)}
+                onUserPress={(userId) => navigateToProfile(userId)}
                 onOptionsPress={() => openOptionsMenu(item.id_post)}
+                isLiked={likedPosts[item.id_post] || false}
+                isSaved={savedPosts[item.id_post] || false}
               />
             )}
             contentContainerStyle={styles.listContainer}
+            onRefresh={() => fetchData(true)}
+            refreshing={loading}
           />
         )}
       </PostDetailOpener>
@@ -472,4 +577,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default PostList; 
+export default PostList;

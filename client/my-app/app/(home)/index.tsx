@@ -9,6 +9,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import AppSettingsMenu from '../../components/ui/general/AppSettingsMenu'
 import BottomNavigation from '../../app/ui/navigation/BottomNavigation'
 
+//utils
+import { navigateToProfile } from '@/app/utils/Navigation';
+
 // Tipul datelor pentru un post în feed
 interface FeedItem {
   id: string;
@@ -114,9 +117,7 @@ export default function HomePage() {
         <TouchableOpacity 
           style={styles.profileSection} 
           onPress={() => {
-            if (user?.id) {
-              router.push(`/(profile)/${user.id}` as any);
-            }
+            navigateToProfile(user?.id as string);
           }}
         >
           <Image 

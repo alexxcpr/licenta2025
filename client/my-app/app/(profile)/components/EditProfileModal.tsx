@@ -20,9 +20,14 @@ import * as ImagePicker from 'expo-image-picker';
 import { UserProfile } from '../../../utils/types';
 import { UserResource } from '@clerk/types'; 
 import { supabase } from '../../../utils/supabase';
+import { useAuth } from '@clerk/clerk-expo';
+import Constants from 'expo-constants';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const IS_IOS = Platform.OS === 'ios';
+
+// Obținem cheia API Clerk din variabilele de mediu
+const CLERK_PUBLISHABLE_KEY = Constants.expoConfig?.extra?.clerkPublishableKey;
 
 interface EditProfileModalProps {
   visible: boolean;
@@ -41,10 +46,12 @@ export default function EditProfileModal({
   loadProfile,
   requestUsernameChangeVerification,
 }: EditProfileModalProps) {
+  const { signOut, getToken } = useAuth();
   const [editUsername, setEditUsername] = useState('');
   const [editBio, setEditBio] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [usernameError, setUsernameError] = useState('');
 
   // Încărcăm datele profilului când devine vizibil modalul
   useEffect(() => {
@@ -59,6 +66,9 @@ export default function EditProfileModal({
         setEditBio('');
         setSelectedImage(user.imageUrl || null);
       }
+      
+      // Resetam erorile
+      setUsernameError('');
     }
   }, [visible, profile, user]);
 
@@ -80,16 +90,66 @@ export default function EditProfileModal({
     }
   };
 
+  const handleUsernameChange = (text: string) => {
+    setEditUsername(text);
+    if (text.includes(' ')) {
+      setUsernameError('Numele de utilizator nu poate conține spații');
+    } else {
+      setUsernameError('');
+    }
+  };
+
+  const validateForm = () => {
+    let isValid = true;
+    
+    if (editUsername.includes(' ')) {
+      setUsernameError('Numele de utilizator nu poate conține spații');
+      isValid = false;
+    }
+    
+    return isValid;
+  };
+  
+  // Actualizarea username-ului în Clerk
+  const updateUsernameInClerk = async (newUsername: string) => {
+    if (!user) return false;
+    
+    try {
+      // Încercăm metoda directă pentru actualizarea username-ului
+      await user.update({ username: newUsername });
+      console.log('Username actualizat cu succes în Clerk');
+      return true;
+    } catch (error) {
+      console.error('Eroare la actualizarea directă a username-ului:', error);
+      
+      // Dacă metoda directă eșuează, încercăm să trimitem email de verificare
+      try {
+        const verificationSent = await requestUsernameChangeVerification(newUsername);
+        console.log('Email de verificare trimis:', verificationSent);
+        return false; // Returnăm false pentru că actualizarea nu s-a finalizat, ci doar am trimis verificarea
+      } catch (verificationError) {
+        console.error('Eroare la trimiterea email-ului de verificare:', verificationError);
+        return false;
+      }
+    }
+  };
+
   const handleSaveProfile = async () => {
     if (!user) {
       console.log('User is null or undefined, exiting handleSaveProfile.');
       return;
     }
     
+    // Validăm formularul înainte de a salva
+    if (!validateForm()) {
+      Alert.alert('Eroare', 'Verificați câmpurile cu erori și încercați din nou.');
+      return;
+    }
+    
     setSavingProfile(true);
     
     try {
-      // Verificare conexiune
+      // Verificare conexiune supabase
       const { error: testError } = await supabase
         .from('user')
         .select('id_user')
@@ -104,8 +164,28 @@ export default function EditProfileModal({
       }
 
       let clerkImageUrl = user.imageUrl;
+      let usernameUpdated = false;
+      let usernameNeedsVerification = false;
       
-      // 1. Actualizare imagine în Clerk (dacă s-a schimbat)
+      // 1. Actualizare date în Supabase
+      const { error: updateError } = await supabase
+        .from('user')
+        .update({
+          username: editUsername,
+          bio: editBio,
+          profile_picture: clerkImageUrl, 
+          date_updated: new Date().toISOString()
+        })
+        .eq('id_user', user.id);
+        
+      if (updateError) {
+        console.error('Eroare la actualizarea profilului în Supabase:', updateError);
+        Alert.alert('Eroare', 'Nu s-a putut actualiza profilul în baza de date.');
+        setSavingProfile(false);
+        return;
+      }
+      
+      // 2. Actualizare imagine în Clerk (dacă s-a schimbat)
       if (selectedImage && selectedImage !== (profile?.profile_picture || user?.imageUrl)) {
         try {
           console.log('Încercare de actualizare a imaginii de profil în Clerk:', selectedImage);
@@ -131,41 +211,42 @@ export default function EditProfileModal({
         }
       }
       
-      // 2. Actualizare date în Supabase
-      const { error: updateError } = await supabase
-        .from('user')
-        .update({
-          username: editUsername,
-          bio: editBio,
-          profile_picture: clerkImageUrl, 
-          date_updated: new Date().toISOString()
-        })
-        .eq('id_user', user.id);
-        
-      if (updateError) {
-        console.error('Eroare la actualizarea profilului în Supabase:', updateError);
-        Alert.alert('Eroare', 'Nu s-a putut actualiza profilul în baza de date.');
-        setSavingProfile(false);
-        return;
-      }
-      
       // 3. Actualizare username în Clerk (dacă s-a schimbat)
-      let usernameUpdatedInClerk = true;
       if (editUsername !== user.username) {
-        console.log('Încercare actualizare username în Clerk:', editUsername);
-        usernameUpdatedInClerk = await requestUsernameChangeVerification(editUsername);
+        try {
+          // Încercăm actualizarea directă
+          usernameUpdated = await updateUsernameInClerk(editUsername);
+          
+          if (!usernameUpdated) {
+            // Dacă actualizarea directă a eșuat, marcăm că este necesară verificarea
+            usernameNeedsVerification = true;
+          }
+        } catch (error) {
+          console.error('Eroare la actualizarea username-ului în Clerk:', error);
+          usernameNeedsVerification = true;
+        }
+      } else {
+        // Username-ul nu s-a schimbat, deci nu e nevoie de actualizare în Clerk
+        usernameUpdated = true;
       }
       
-      await loadProfile(); // Reîncarcă datele
-      onClose(); // Închide modalul
+      // Reîncărcăm profilul și închidem modalul
+      await loadProfile();
+      onClose();
       
-      if (editUsername !== user.username && !usernameUpdatedInClerk) {
+      // Afișăm mesajul corespunzător în funcție de rezultatul actualizării
+      if (usernameNeedsVerification) {
+        Alert.alert(
+          'Verificare necesară', 
+          'Profilul a fost actualizat în baza de date, dar pentru schimbarea numelui de utilizator este necesară verificare suplimentară. Verificați email-ul pentru instrucțiuni.'
+        );
+      } else if (usernameUpdated || editUsername === user.username) {
+        Alert.alert('Succes', 'Profilul a fost actualizat cu succes!');
+      } else {
         Alert.alert(
           'Actualizare parțială', 
-          'Profilul a fost actualizat, dar schimbarea numelui de utilizator necesită verificare sau a eșuat.'
+          'Profilul a fost actualizat, dar schimbarea numelui de utilizator a eșuat.'
         );
-      } else {
-        Alert.alert('Succes', 'Profilul a fost actualizat cu succes!');
       }
 
     } catch (error) {
@@ -236,12 +317,15 @@ export default function EditProfileModal({
             <View style={styles.formSection}>
               <Text style={styles.label}>Nume utilizator</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, usernameError ? styles.inputError : null]}
                 value={editUsername}
-                onChangeText={setEditUsername}
+                onChangeText={handleUsernameChange}
                 placeholder="Introduceți numele de utilizator"
                 maxLength={50}
               />
+              {usernameError ? (
+                <Text style={styles.errorText}>{usernameError}</Text>
+              ) : null}
               
               <Text style={styles.label}>Despre mine</Text>
               <TextInput
@@ -340,6 +424,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 20,
     color: '#000',
+  },
+  inputError: {
+    borderWidth: 1,
+    borderColor: '#FF3B30',
+    marginBottom: 5,
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 13,
+    marginBottom: 10,
+    marginTop: 5,
   },
   bioInput: {
     height: 120,

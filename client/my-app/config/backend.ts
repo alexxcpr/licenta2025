@@ -2,8 +2,6 @@
 // Acest fișier va fi actualizat automat de scriptul de dezvoltare
 
 export const BACKEND_CONFIG = {
-  // BASE_URL: 'https://licenta2025.onrender.com',
-  // API_URL: 'https://licenta2025.onrender.com/api'
   BASE_URL: 'http://localhost:5000',
   API_URL: 'http://localhost:5000/api'
 };

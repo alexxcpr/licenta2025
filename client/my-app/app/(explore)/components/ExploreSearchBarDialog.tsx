@@ -13,6 +13,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../../utils/supabase';
 
+//utils
+import { navigateToProfile } from '@/app/utils/Navigation';
+
 // Interfețe pentru datele utilizatorului și informații suplimentare
 interface UserData {
   id_user: string;
@@ -59,7 +62,6 @@ export default function ExploreSearchBarDialog({
   onClose,
   onSelectUser,
 }: ExploreSearchBarDialogProps) {
-  const router = useRouter();
   const [enrichedResults, setEnrichedResults] = useState<EnrichedUserData[]>([]);
   const [loadingEnrich, setLoadingEnrich] = useState(false);
 
@@ -132,19 +134,13 @@ export default function ExploreSearchBarDialog({
     }
   }, [results]);
 
-  const handleUserPress = (user: UserData) => {
-    onSelectUser(user);
-    // Navigăm la profilul utilizatorului
-    router.push(`/(profile)/${user.id_user}` as any);
-  };
-
   const renderUserItem = ({ item }: { item: EnrichedUserData }) => {
     const profileImageUrl = item.profile_picture || 'https://azyiyrvsaqyqkuwrgykl.supabase.co/storage/v1/object/public/images//user.png';
 
     return (
       <TouchableOpacity
         style={styles.userItem}
-        onPress={() => handleUserPress(item)}
+        onPress={() => navigateToProfile(item.id_user)}
       >
         <Image source={{ uri: profileImageUrl }} style={styles.profileImage} />
         

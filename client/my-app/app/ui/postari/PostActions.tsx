@@ -2,9 +2,12 @@ import React from 'react';
 import {
   View,
   StyleSheet,
-  Pressable
+  Pressable,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../../../utils/supabase';
+import { toggleLike, toggleSave, handleSend, checkPostStatus } from '../../../utils/postActions';
 
 interface PostActionsProps {
   postId: number;
