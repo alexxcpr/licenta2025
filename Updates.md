@@ -2,7 +2,7 @@
 
 ✅alpha -> ⬇️beta -> 🔜release candidate(RC) -> 🔜versiune finala
 
-## beta 01.1.1
+## beta 01.1.1 
 *IMBUNATATIRI*
 - adaugata rutarea spre profil din sectiunea de comentarii. cand se apasa pe userul care a scris comentariul, se redirectioneaza catre profilul acestuia
 
