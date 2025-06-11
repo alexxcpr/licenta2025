@@ -49,10 +49,10 @@ export default function ProfileHeader({
             <Text style={styles.statLabel}>Conexiuni</Text>
           </View>
           
-          <View style={styles.statItem}>
+          {/* <View style={styles.statItem}>
             <Text style={styles.statNumber}>0</Text> 
             <Text style={styles.statLabel}>Grupuri</Text>
-          </View>
+          </View> */}
         </View>
       </View>
 

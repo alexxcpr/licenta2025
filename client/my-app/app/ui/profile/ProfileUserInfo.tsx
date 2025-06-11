@@ -6,7 +6,6 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
-  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { UserProfile } from '@/utils/types';
@@ -223,25 +222,24 @@ const ProfileUserInfo: React.FC<ProfileUserInfoProps> = ({
 
         <View style={styles.userInfo}>
           <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{postCount}</Text>
-              <Text style={styles.statLabel}>Postări</Text>
+            <View style={styles.statItemWrapper}>
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>{postCount}</Text>
+                <Text style={styles.statLabel}>Postări</Text>
+              </View>
             </View>
             
-            <TouchableOpacity 
-              style={styles.statItem} 
-              onPress={showConnectionsModal}
-              accessibilityLabel="Vezi conexiunile"
-              accessibilityHint="Deschide lista cu toate conexiunile utilizatorului"
-              disabled={connectionCount === 0}
-            >
-              <Text style={styles.statNumber}>{connectionCount}</Text>
-              <Text style={styles.statLabel}>Conexiuni</Text>
-            </TouchableOpacity>
-            
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>0</Text>
-              <Text style={styles.statLabel}>Grupuri</Text>
+            <View style={styles.statItemWrapper}>
+              <TouchableOpacity 
+                style={styles.statItem} 
+                onPress={showConnectionsModal}
+                accessibilityLabel="Vezi conexiunile"
+                accessibilityHint="Deschide lista cu toate conexiunile utilizatorului"
+                disabled={connectionCount === 0}
+              >
+                <Text style={styles.statNumber}>{connectionCount}</Text>
+                <Text style={styles.statLabel}>Conexiuni</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -352,20 +350,37 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     marginBottom: 15,
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
+    width: '100%',
+  },
+  statItemWrapper: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   statItem: {
     alignItems: 'center',
-    marginRight: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    backgroundColor: '#f8f8f8',
+    borderRadius: 10,
+    minWidth: 80,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
   },
   statNumber: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
+    marginBottom: 4,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#666',
+    fontWeight: '500',
   },
   content: {
     padding: 15,

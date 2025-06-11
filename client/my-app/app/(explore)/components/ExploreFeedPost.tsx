@@ -112,9 +112,9 @@ export default function ExploreFeedPost({
           </TouchableOpacity>
 
           {/* Buton Share */}
-          <TouchableOpacity style={styles.actionButton} onPress={onShare}>
+          {/* <TouchableOpacity style={styles.actionButton} onPress={onShare}>
             <Ionicons name="paper-plane-outline" size={20} color="#666" />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
         {/* Spațiere flexibilă */}

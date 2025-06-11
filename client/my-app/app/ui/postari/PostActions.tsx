@@ -60,7 +60,7 @@ const PostActions = ({
         </Pressable>
         
         {/* Buton Send - mutat lângă Comment conform cerinței */}
-        <Pressable 
+        {/* <Pressable 
           onPress={onSend}
           android_ripple={{ color: '#ddd', borderless: true }}
           style={({ pressed }) => [
@@ -69,7 +69,7 @@ const PostActions = ({
           ]}
         >
           <Ionicons name="paper-plane-outline" size={24} color="#333" />
-        </Pressable>
+        </Pressable> */}
       </View>
       
       {/* Spațiere flexibilă */}

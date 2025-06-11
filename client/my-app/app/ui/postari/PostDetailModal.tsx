@@ -8,13 +8,12 @@ import {
   Image,
   ScrollView,
   SafeAreaView,
-  ActivityIndicator,
-  TextInput,
   Alert,
   Dimensions,
   Platform,
   StatusBar,
-  Animated
+  Animated,
+  Linking
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../utils/supabase';
@@ -455,7 +454,7 @@ export default function PostDetailModal({
                   {/* Folosim componenta PostContent pentru imaginea postării */}
                   <PostContent 
                     imageUrl={post.image_url}
-                    onPress={() => console.log('Imagine apăsată')}
+                    onPress={() => Linking.openURL(post.image_url)}
                   />
 
                   {/* Folosim componenta PostActions pentru butoanele de acțiune */}
