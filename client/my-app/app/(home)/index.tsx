@@ -8,6 +8,7 @@ import DeveloperInfoDialog from '../../components/DeveloperInfoDialog'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import AppSettingsMenu from '../../components/ui/general/AppSettingsMenu'
 import BottomNavigation from '../../app/ui/navigation/BottomNavigation'
+import { supabase } from '../../utils/supabase'
 
 //utils
 import navigateToProfile from '@/app/utils/Navigation';
@@ -16,6 +17,13 @@ import navigateToProfile from '@/app/utils/Navigation';
 interface FeedItem {
   id: string;
   content?: React.ReactNode;
+}
+
+// Interfața pentru datele utilizatorului din Supabase
+interface SupabaseUser {
+  id_user: string;
+  username: string;
+  profile_picture?: string;
 }
 
 // Cache pentru datele din feed
@@ -32,6 +40,38 @@ export default function HomePage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [forceRefresh, setForceRefresh] = useState(false)
   const initialLoadDoneRef = useRef(false) // Flag pentru încărcarea inițială
+  const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null)
+  
+  // Funcție pentru a încărca datele utilizatorului din Supabase
+  const loadUserData = useCallback(async () => {
+    if (!user?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('user')
+        .select('id_user, username, profile_picture')
+        .eq('id_user', user.id)
+        .single();
+      
+      if (error) {
+        console.error('Eroare la încărcarea datelor utilizatorului din Supabase:', error);
+        return;
+      }
+      
+      if (data) {
+        setSupabaseUser(data);
+      }
+    } catch (error) {
+      console.error('Eroare generală la încărcarea datelor utilizatorului:', error);
+    }
+  }, [user?.id]);
+  
+  // Încărcăm datele utilizatorului când se încarcă componenta sau când se schimbă user.id
+  useEffect(() => {
+    if (user?.id) {
+      loadUserData();
+    }
+  }, [user?.id, loadUserData]);
   
   // Funcție pentru a încărca feedul cu verificare cache
   const loadFeedData = useCallback(async (forceFetch = false) => {
@@ -98,6 +138,8 @@ export default function HomePage() {
       try {
         await user.reload();
         console.log('Datele utilizatorului au fost reîmprospătate');
+        // Reîncărcăm și datele din Supabase
+        await loadUserData();
       } catch (error) {
         console.error('Eroare la reîmprospătarea datelor utilizatorului:', error);
       }
@@ -105,7 +147,7 @@ export default function HomePage() {
     
     // Forțăm reîncărcarea datelor din feed
     await loadFeedData(true);
-  }, [isSignedIn, user, loadFeedData])
+  }, [isSignedIn, user, loadFeedData, loadUserData])
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -121,12 +163,12 @@ export default function HomePage() {
           }}
         >
           <Image 
-            source={{ uri: user?.imageUrl }} 
+            source={{ uri: supabaseUser?.profile_picture || user?.imageUrl }} 
             style={styles.profileImage}
             key={`profile-image-${refreshing ? 'refreshing' : 'idle'}`}
           />
           <Text style={styles.profileNameText}>
-            @{ (user?.username && user.username.length > 10 ? user.username.substring(0, 10) + '..' : user?.username) || 'Profil'}
+            @{ (supabaseUser?.username && supabaseUser.username.length > 10 ? supabaseUser.username.substring(0, 10) + '..' : supabaseUser?.username) || 'Profil'}
           </Text>
         </TouchableOpacity>
       </View>
