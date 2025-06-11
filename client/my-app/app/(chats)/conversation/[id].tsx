@@ -32,7 +32,6 @@ interface Message {
     profile_picture?: string;
     functie?: {
       denumire: string;
-      culoare: string;
     }
   };
   sender_info?: {
@@ -41,7 +40,6 @@ interface Message {
     profile_picture?: string;
     functie?: {
       denumire: string;
-      culoare: string;
     }
   };
 }
@@ -75,7 +73,6 @@ interface SupabaseUser {
   id_ocupatie?: number;
   functie?: {
     denumire: string;
-    culoare: string;
   }
 }
 
@@ -118,8 +115,7 @@ export default function ChatRoomScreen() {
           setCurrentUser({
             ...data.data,
             functie: data.data.functie ? {
-              denumire: data.data.functie.denumire,
-              culoare: data.data.functie.culoare || '#6633CC'
+              denumire: data.data.functie.denumire
             } : undefined
           });
         }
@@ -284,18 +280,21 @@ export default function ChatRoomScreen() {
         });
 
         // Procesăm mesajele pentru a avea structura corectă
-        const processedMessages = conversationData.messages.map((message: any) => ({
-          ...message,
-          sender_info: message.sender ? {
-            username: message.sender.username,
-            email: message.sender.email || '',
-            profile_picture: message.sender.profile_picture,
-            functie: message.sender.functie ? {
-              denumire: message.sender.functie.denumire,
-              culoare: message.sender.functie.culoare || '#6633CC'
+        const processedMessages = conversationData.messages.map((message: any) => {
+          console.log("Message from server:", message);
+          console.log("Sender from server:", message.sender);
+          console.log("Functie din sender:", message.sender?.functie);
+          
+          return {
+            ...message,
+            sender_info: message.sender ? {
+              username: message.sender.username,
+              email: message.sender.email || '',
+              profile_picture: message.sender.profile_picture,
+              functie: message.sender.functie || { denumire: 'Utilizator' }
             } : undefined
-          } : undefined
-        }));
+          };
+        });
 
         setMessages(processedMessages);
         
@@ -339,6 +338,12 @@ export default function ChatRoomScreen() {
     const senderName = item.sender_info?.username || 'Utilizator';
     const senderFunction = item.sender_info?.functie;
     
+    console.log('Sender info:', item.sender_info);
+    console.log('Sender function:', senderFunction);
+    
+    console.log('Sender info:', item.sender_info);
+    console.log('Sender function:', senderFunction);
+    
     return (
       <View style={[
         styles.messageContainer,
@@ -348,8 +353,8 @@ export default function ChatRoomScreen() {
           <View style={styles.senderInfoContainer}>
             <Text style={styles.senderName}>{senderName}</Text>
             {senderFunction && (
-              <Text style={[styles.senderFunction, { color: senderFunction.culoare }]}>
-                {senderFunction.denumire}
+              <Text style={[styles.senderFunction, { color: '#6633CC' }]}>
+                {senderFunction.denumire || "Funcție"}
               </Text>
             )}
           </View>

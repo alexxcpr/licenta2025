@@ -336,7 +336,7 @@ const ConnectionsList: React.FC<ConnectionsListProps> = ({
   }, [visible, userId]);
 
   // Navighează către profilul utilizatorului
-  const navigateToProfile = (profileUserId: string) => {
+  const handleProfileNavigation = (profileUserId: string) => {
     navigateToProfile(profileUserId);
     onClose();
   };
@@ -345,7 +345,7 @@ const ConnectionsList: React.FC<ConnectionsListProps> = ({
   const renderConnectionItem = ({ item }: { item: Connection }) => (
     <TouchableOpacity
       style={styles.connectionItem}
-      onPress={() => navigateToProfile(item.id)}
+      onPress={() => handleProfileNavigation(item.id)}
     >
       <Image
         source={{

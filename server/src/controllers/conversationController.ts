@@ -19,6 +19,9 @@ interface ChatParticipant {
   id_user: string;
   username: string;
   profile_picture?: string;
+  functie?: {
+    denumire: string;
+  };
 }
 
 interface Message {
@@ -225,7 +228,8 @@ export const getConversation = async (req: Request, res: Response) => {
         user:id_user (
           id_user,
           username,
-          profile_picture
+          profile_picture,
+          functie:id_functie (denumire)
         )
       `)
       .eq('id_chat_room', chatRoomId);
@@ -242,7 +246,10 @@ export const getConversation = async (req: Request, res: Response) => {
     const participants: ChatParticipant[] = (participantsData || []).map((p: any) => ({
       id_user: p.user.id_user,
       username: p.user.username,
-      profile_picture: p.user.profile_picture
+      profile_picture: p.user.profile_picture,
+      functie: p.user.functie ? {
+        denumire: p.user.functie.denumire
+      } : undefined
     }));
 
     console.log(`Găsiți ${participants.length} participanți`);
@@ -255,7 +262,9 @@ export const getConversation = async (req: Request, res: Response) => {
         sender:id_sender (
           id_user,
           username,
-          profile_picture
+          profile_picture,
+          id_functie,
+          functie:id_functie (denumire)
         )
       `)
       .eq('id_chat_room', chatRoomId)
@@ -281,7 +290,10 @@ export const getConversation = async (req: Request, res: Response) => {
       sender: m.sender ? {
         id_user: m.sender.id_user,
         username: m.sender.username,
-        profile_picture: m.sender.profile_picture
+        profile_picture: m.sender.profile_picture,
+        functie: m.sender.functie ? {
+          denumire: m.sender.functie.denumire
+        } : undefined
       } : undefined
     }));
 
@@ -378,13 +390,16 @@ export const getUserConversations = async (req: Request, res: Response) => {
       // Obținem detaliile utilizatorilor participanți
       const { data: usersData } = await supabase
         .from('user')
-        .select('id_user, username, profile_picture')
+        .select('id_user, username, profile_picture, id_functie, functie:id_functie(denumire)')
         .in('id_user', participantIds);
 
       const participants: ChatParticipant[] = (usersData || []).map((user: any) => ({
         id_user: user.id_user,
         username: user.username,
-        profile_picture: user.profile_picture
+        profile_picture: user.profile_picture,
+        functie: user.functie ? {
+          denumire: user.functie.denumire
+        } : undefined
       }));
 
       // Obținem ultimul mesaj
