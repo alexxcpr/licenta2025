@@ -26,7 +26,6 @@ interface User {
   id_functie?: number;
   functie?: {
     denumire: string;
-    culoare: string;
   }
 }
 
@@ -160,7 +159,6 @@ export default function EditChatScreen() {
                 id_functie: userObj.id_functie,
                 functie: functiiArray.length > 0 ? {
                   denumire: functiiArray[0].denumire,
-                  culoare: '#6633CC'
                 } : undefined
               };
             })
@@ -202,8 +200,7 @@ export default function EditChatScreen() {
               profile_picture,
               id_functie,
               functii (
-                denumire,
-                culoare
+                denumire
               )
             ),
             user2:user!connection_id_user_2_fkey (
@@ -213,8 +210,7 @@ export default function EditChatScreen() {
               profile_picture,
               id_functie,
               functii (
-                denumire,
-                culoare
+                denumire
               )
             )
           `)
@@ -249,7 +245,6 @@ export default function EditChatScreen() {
                 id_functie: otherUser.id_functie,
                 functie: functiiArray.length > 0 ? {
                   denumire: functiiArray[0].denumire,
-                  culoare: '#6633CC'
                 } : undefined
               };
               
@@ -393,7 +388,7 @@ export default function EditChatScreen() {
         <View style={styles.userInfo}>
           <Text style={styles.userName}>{item.username}</Text>
           {item.functie && (
-            <Text style={[styles.userFunction, { color: item.functie.culoare }]}>
+            <Text style={[styles.userFunction, { color: '#6633CC' }]}>
               {item.functie.denumire}
             </Text>
           )}
