@@ -364,7 +364,9 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     paddingVertical: 8,
     alignItems: 'center',
-    marginRight: 8,
+    justifyContent: 'center',
+    marginRight: 5,
+    minHeight: 42,
   },
   connectButton: {
     backgroundColor: '#007AFF',
